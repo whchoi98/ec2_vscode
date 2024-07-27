@@ -38,6 +38,14 @@ Parameters:
     Type: String
     NoEcho: true
 
+  DefaultVPCId:
+    Description: "The ID of the default VPC"
+    Type: AWS::EC2::VPC::Id
+
+  PublicSubnetId:
+    Description: "The ID of a public subnet in the default VPC"
+    Type: AWS::EC2::Subnet::Id
+
 Conditions:
   UseAmazonLinux2: !Equals [!Ref AMIType, "AmazonLinux2"]
   UseAmazonLinux2023: !Equals [!Ref AMIType, "AmazonLinux2023"]
@@ -70,35 +78,6 @@ Resources:
           ToPort: 8080
           CidrIp: 0.0.0.0/0
 
-  PublicSubnet:
-    Type: 'AWS::EC2::Subnet'
-    Properties:
-      VpcId: !Ref DefaultVPCId
-      CidrBlock: '172.31.0.0/20'
-      AvailabilityZone: !Ref AvailabilityZone
-
-  InstanceProfileSSM:
-    Type: 'AWS::IAM::InstanceProfile'
-    Properties:
-      Path: "/"
-      Roles:
-        - Ref: ServerRoleSSM
-
-  ServerRoleSSM:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: 
-                - ec2.amazonaws.com
-            Action: "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
-      Path: "/"
-
   EC2Instance:
     Type: 'AWS::EC2::Instance'
     Properties:
@@ -111,7 +90,7 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfileSSM
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
-          SubnetId: !Ref PublicSubnet
+          SubnetId: !Ref PublicSubnetId
           DeviceIndex: 0
           GroupSet:
             - !Ref InstanceSecurityGroup
@@ -146,10 +125,27 @@ Resources:
         - Key: Name
           Value: EC2VSCodeServer
 
-  DefaultVPCId:
-    Type: 'AWS::EC2::VPC'
+  InstanceProfileSSM:
+    Type: 'AWS::IAM::InstanceProfile'
     Properties:
-      CidrBlock: '172.31.0.0/16'
+      Path: "/"
+      Roles:
+        - Ref: ServerRoleSSM
+
+  ServerRoleSSM:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - ec2.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+      Path: "/"
 
   SSMEndpoint:
     Type: 'AWS::EC2::VPCEndpoint'
@@ -159,7 +155,7 @@ Resources:
       VpcEndpointType: Interface
       PrivateDnsEnabled: True
       SubnetIds: 
-        - Ref: PublicSubnet
+        - Ref: PublicSubnetId
       SecurityGroupIds: 
         - Ref: InstanceSecurityGroup
 
@@ -171,6 +167,6 @@ Resources:
       VpcEndpointType: Interface
       PrivateDnsEnabled: True
       SubnetIds: 
-        - Ref: PublicSubnet
+        - Ref: PublicSubnetId
       SecurityGroupIds:
         - Ref: InstanceSecurityGroup
