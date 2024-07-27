@@ -160,11 +160,13 @@ Resources:
   DefaultVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: !Select [0, !GetAZs]
+      CidrBlock: '172.31.0.0/16'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
 
   PublicSubnet:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref DefaultVPC
-      CidrBlock: !Select [0, !GetAZs]
+      CidrBlock: '172.31.0.0/20'
       AvailabilityZone: !Ref AvailabilityZone
