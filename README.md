@@ -51,6 +51,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     "KeyPair=ec2vscode" \
     "InstanceType=t3.xlarge" \
+    "VSCodeServerPassword=1234Qwer" \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
