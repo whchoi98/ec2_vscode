@@ -107,18 +107,22 @@ Resources:
           mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
           PASSWORD_HASH=$(echo -n "1234Qwer" | sha256sum | awk '{print $1}')
-          echo "Environment=\"PASSWORD_HASH=$PASSWORD_HASH\"" >> /etc/systemd/system/code-server.service
+          cat <<EOF > /etc/systemd/system/code-server.service
           [Unit]
           Description=VS Code Server
           After=network.target
+
           [Service]
           Type=simple
           User=ec2-user
-          ExecStart=/usr/local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password --password \$PASSWORD_HASH
+          Environment="PASSWORD_HASH=$PASSWORD_HASH"
+          ExecStart=/usr/local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password
           Restart=always
+
           [Install]
           WantedBy=multi-user.target
           EOF
+          systemctl daemon-reload
           systemctl enable code-server
           systemctl start code-server
       Tags:
