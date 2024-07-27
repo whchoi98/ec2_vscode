@@ -36,99 +36,46 @@ Parameters:
   VSCodeServerPassword:
     Description: "Password for accessing VS Code Server"
     Type: String
-    NoEcho: true # 보안을 위해 콘솔에 비밀번호가 표시되지 않도록 설정
+    NoEcho: true
 
 Conditions:
   UseAmazonLinux2: !Equals [!Ref AMIType, "AmazonLinux2"]
   UseAmazonLinux2023: !Equals [!Ref AMIType, "AmazonLinux2023"]
 
 Resources:
-  ServerRoleSSM:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      RoleName: !Sub '${AWS::StackName}-SSMRole'
-      Path: "/"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-
-  InstanceProfileSSM:
-    Type: 'AWS::IAM::InstanceProfile'
-    Properties:
-      Path: "/"
-      Roles: 
-        - Ref: ServerRoleSSM
-
-  SSMSG:
+  InstanceSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: Open-up ports for HTTP/S from All network
-      VpcId: !Ref DefaultVPC
+      GroupDescription: Enable SSH, HTTP, and HTTPS access
+      VpcId: !Ref DefaultVPCId
       SecurityGroupIngress:
         - IpProtocol: icmp
           CidrIp: 0.0.0.0/0
-          FromPort: "-1"
-          ToPort: "-1"
+          FromPort: -1
+          ToPort: -1
         - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
           CidrIp: 0.0.0.0/0
-          FromPort: "22"
-          ToPort: "22"
         - IpProtocol: tcp
-          CidrIp: 0.0.0.0/0
-          FromPort: "80"
-          ToPort: "80"
-        - IpProtocol: tcp
-          CidrIp: 0.0.0.0/0
-          FromPort: "443"
-          ToPort: "443"
-          
-        - IpProtocol: tcp
-          CidrIp: 0.0.0.0/0
           FromPort: 80
           ToPort: 80
-        - IpProtocol: tcp
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-        - IpProtocol: tcp
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-SSMSG'
+          CidrIp: 0.0.0.0/0
 
-  SSMEndpoint:
-    Type: 'AWS::EC2::VPCEndpoint'
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
     Properties:
-      VpcId: !Ref DefaultVPC
-      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: True
-      SubnetIds: 
-        - Ref: PublicSubnet
-      SecurityGroupIds: 
-        - Ref: SSMSG
-
-  SSMMEndpoint:
-    Type: 'AWS::EC2::VPCEndpoint'
-    Properties:
-      VpcId: !Ref DefaultVPC
-      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: True
-      SubnetIds: 
-        - Ref: PublicSubnet
-      SecurityGroupIds:
-        - Ref: SSMSG
+      VpcId: !Ref DefaultVPCId
+      CidrBlock: '172.31.0.0/20'
+      AvailabilityZone: !Ref AvailabilityZone
 
   EC2Instance:
     Type: 'AWS::EC2::Instance'
@@ -177,43 +124,31 @@ Resources:
         - Key: Name
           Value: EC2VSCodeServer
 
-  InstanceSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: Enable SSH, HTTP, and HTTPS access
-      VpcId: !Ref DefaultVPC
-      SecurityGroupIngress:
-        - IpProtocol: icmp
-          CidrIp: 0.0.0.0/0
-          FromPort: "-1"
-          ToPort: "-1"
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
-
-  DefaultVPC:
+  DefaultVPCId:
     Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: '172.31.0.0/16'
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
+      VpcId: !Ref DefaultVPCId
 
-  PublicSubnet:
-    Type: 'AWS::EC2::Subnet'
+  SSMEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
     Properties:
-      VpcId: !Ref DefaultVPC
-      CidrBlock: '172.31.0.0/20'
-      AvailabilityZone: !Ref AvailabilityZone
+      VpcId: !Ref DefaultVPCId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+      SubnetIds: 
+        - Ref: PublicSubnet
+      SecurityGroupIds: 
+        - Ref: InstanceSecurityGroup
+
+  SSMMEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcId: !Ref DefaultVPCId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+      SubnetIds: 
+        - Ref: PublicSubnet
+      SecurityGroupIds:
+        - Ref: InstanceSecurityGroup
