@@ -20,6 +20,17 @@ else
   echo "퍼블릭 서브넷 ID: $PUBLIC_SUBNET_ID"
 fi
 
-# 환경 변수로 설정
-export DEFAULT_VPC_ID
-export PUBLIC_SUBNET_ID
+# 환경 변수로 설정 및 export
+export DEFAULT_VPC_ID=$DEFAULT_VPC_ID
+export PUBLIC_SUBNET_ID=$PUBLIC_SUBNET_ID
+
+# 환경 변수를 파일에 저장 (선택 사항)
+echo "export DEFAULT_VPC_ID=$DEFAULT_VPC_ID" >> ~/.bashrc
+echo "export PUBLIC_SUBNET_ID=$PUBLIC_SUBNET_ID" >> ~/.bashrc
+
+# 새로 설정된 환경 변수를 현재 셸에 적용
+source ~/.bashrc
+
+echo "환경 변수 설정이 완료되었습니다."
+echo "DEFAULT_VPC_ID: $DEFAULT_VPC_ID"
+echo "PUBLIC_SUBNET_ID: $PUBLIC_SUBNET_ID"
