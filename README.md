@@ -19,6 +19,15 @@ This repository contains an AWS CloudFormation template for deploying an EC2 ins
 git clone https://github.com/whchoi98/ec2_vscode.git
 ```
 
+### Pem Key 
+```
+cd ~
+ssh-keygen
+mv ./ec2vscode ./ec2vscode.pem
+chmod 400 ./ec2vscode.pem
+aws ec2 import-key-pair --key-name "ec2vscode" --public-key-material fileb://./ec2vscode.pub
+```
+
 ### CloudFormation 스택 배포 / Deploy the CloudFormation Stack
 
 AWS CLI가 `ap-northeast-2` 리전으로 설정되어 있는지 확인하세요:
@@ -40,7 +49,8 @@ aws cloudformation deploy \
   --stack-name "ec2vscode" \
   --template-file "/home/cloudshell-user/ec2_vscode/ec2vscode.yaml" \
   --parameter-overrides \
-    "InstanceType="t3.xlarge" \
+    "KeyPair=ec2vscode" \
+    "InstanceType=t3.xlarge" \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
