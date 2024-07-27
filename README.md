@@ -13,7 +13,7 @@ This repository contains an AWS CloudFormation template for deploying an EC2 ins
 
 ## 시작하기 / Getting Started
 
-### 리포지토리 클론 / Clone the Repository
+### Clone the Repository
 
 ```bash
 git clone https://github.com/whchoi98/ec2_vscode.git
@@ -53,7 +53,6 @@ aws cloudformation deploy \
     KeyPair=your-key-pair-name \
     InstanceType=t3.xlarge \
     AMIType=AmazonLinux2023 \
-    VSCodeServerPassword=your-password \
     DefaultVPCId=$DEFAULT_VPC_ID \
     PublicSubnetId=$PUBLIC_SUBNET_ID \
   --capabilities CAPABILITY_NAMED_IAM
@@ -62,6 +61,9 @@ aws cloudformation deploy \
 ## 파라미터 / Parameters
 
 - **InstanceType**: 배포할 EC2 인스턴스 유형 (기본값: `t3.xlarge`)
+- **AMIType** : 배포할 기본 Image (기본값 : `AmazonLinux2023`)
+- **DefaultVPCId=$DEFAULT_VPC_ID** : Default VPC
+- **PublicSubnetId=$PUBLIC_SUBNET_ID** : PublicAZ A
 
 ## 주의 사항 / Notes
 
@@ -77,6 +79,15 @@ aws cloudformation deploy \
 
 - Make sure to limit access to the EC2 instance via security groups.
 - Regularly update your EC2 instance to apply security patches.
+
+```
+./vscode_ip.sh
+```
+
+```
+$ ./vscode_ip.sh
+EC2VSCodeServer = xxx.xxx.xxx.xxx
+```
 
 더 자세한 구성 및 커스터마이징 옵션에 대해서는 이 리포지토리의 CloudFormation 템플릿을 참조하세요.
 
