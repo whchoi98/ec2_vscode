@@ -19,3 +19,7 @@ if [ -z "$PUBLIC_SUBNET_ID" ]; then
 else
   echo "퍼블릭 서브넷 ID: $PUBLIC_SUBNET_ID"
 fi
+
+# 환경 변수로 설정
+export DEFAULT_VPC_ID
+export PUBLIC_SUBNET_ID
