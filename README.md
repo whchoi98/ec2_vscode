@@ -47,7 +47,7 @@ Deploy the CloudFormation stack:
 
 ```bash
 aws cloudformation deploy \
-  --template-file path/to/your/template.yaml \
+  --template-file "/home/cloudshell-user/ec2_vscode/ec2vscode.yaml" \
   --stack-name YourStackName \
   --parameter-overrides \
     KeyPair=your-key-pair-name \
