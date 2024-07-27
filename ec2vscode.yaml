@@ -106,8 +106,15 @@ Resources:
           tar -xzf code-server-4.0.1-linux-amd64.tar.gz
           mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
-          PASSWORD_HASH=$(echo -n "1234Qwer" | sha256sum | awk '{print $1}')
+          mkdir -p /home/ec2-user/.config/code-server
+          cat <<EOF > /home/ec2-user/.config/code-server/config.yaml
+          bind-addr: 0.0.0.0:8080
+          auth: none
+          cert: false
+          EOF
+          chown -R ec2-user:ec2-user /home/ec2-user/.config
           cat <<EOF > /etc/systemd/system/code-server.service
+ 
           [Unit]
           Description=VS Code Server
           After=network.target
@@ -115,8 +122,7 @@ Resources:
           [Service]
           Type=simple
           User=ec2-user
-          Environment="PASSWORD_HASH=$PASSWORD_HASH"
-          ExecStart=/usr/local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password
+          ExecStart=/usr/local/bin/code-server --config /home/ec2-user/.config/code-server/config.yaml
           Restart=always
 
           [Install]
