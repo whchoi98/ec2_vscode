@@ -174,8 +174,3 @@ Resources:
         - Ref: PublicSubnetId
       SecurityGroupIds:
         - Ref: InstanceSecurityGroup
-
-Outputs:
-  EC2InstancePublicIP:
-    Description: "Public IP address of the VS Code Server EC2 instance"
-    Value: !GetAtt EC2Instance.PublicIpAddress
