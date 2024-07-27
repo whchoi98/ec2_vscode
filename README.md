@@ -77,5 +77,5 @@ aws cloudformation deploy \
 더 자세한 구성 및 커스터마이징 옵션에 대해서는 이 리포지토리의 CloudFormation 템플릿을 참조하세요.
 
 For more details on the configuration and customization options, refer to the CloudFormation template in this repository.
-```
+
 
