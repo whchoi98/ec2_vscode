@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy an EC2 instance with VS Code Server in a public subnet of the default VPC in ap-northeast-2 using Amazon Linux 2 or Amazon Linux 2023
+
+Parameters:
+  AvailabilityZone:
+    Description: "The Availability Zone where the EC2 instance will be deployed."
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: "ap-northeast-2a"
+
+  KeyPair:
+    Description: "Keypair to access the EC2 Instance"
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Default: "mykey"
+
+  InstanceType:
+    Description: "EC2 instance type for the server"
+    Type: String
+    Default: "t3.xlarge"
+
+  AMIType:
+    Description: "Select the Amazon Linux version for the EC2 instance"
+    Type: String
+    AllowedValues: 
+      - "AmazonLinux2"
+      - "AmazonLinux2023"
+    Default: "AmazonLinux2023"
+
+Mappings:
+  AMIMapping:
+    "AmazonLinux2":
+      "ap-northeast-2": "resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+    "AmazonLinux2023":
+      "ap-northeast-2": "resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+
+Resources:
+  ServerRoleSSM:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-SSMRole'
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+  InstanceProfileSSM:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: "/"
+      Roles: 
+        - Ref: ServerRoleSSM
+
+  SSMSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Open-up ports for HTTP/S from All network
+      VpcId: !Ref DefaultVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 443
+          ToPort: 443
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-SSMSG'
+
+  SSMEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcId: !Ref DefaultVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+      SubnetIds: 
+        - Ref: PublicSubnet
+      SecurityGroupIds:
+        - Ref: SSMSG
+
+  SSMMEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcId: !Ref DefaultVPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+      SubnetIds: 
+        - Ref: PublicSubnet
+      SecurityGroupIds:
+        - Ref: SSMSG
+
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPair
+      ImageId: !FindInMap [AMIMapping, !Ref AMIType, !Ref "AWS::Region"]
+      IamInstanceProfile: !Ref InstanceProfileSSM
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          SubnetId: !Ref PublicSubnet
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash
+          yum update -y || dnf update -y
+          yum install -y git || dnf install -y git
+          yum groupinstall -y "Development Tools" || dnf groupinstall -y "Development Tools"
+          curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+          yum install -y nodejs || dnf install -y nodejs
+          wget https://github.com/coder/code-server/releases/download/v4.0.1/code-server-4.0.1-linux-amd64.tar.gz
+          tar -xzf code-server-4.0.1-linux-amd64.tar.gz
+          mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
+          ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+          cat <<EOF > /etc/systemd/system/code-server.service
+          [Unit]
+          Description=VS Code Server
+          After=network.target
+          [Service]
+          Type=simple
+          User=ec2-user
+          ExecStart=/usr/local/bin/code-server --bind-addr 0.0.0.0:8080
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          systemctl enable code-server
+          systemctl start code-server
+      Tags:
+        - Key: Name
+          Value: EC2VSCodeServer
+
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access
+      VpcId: !Ref DefaultVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+
+  DefaultVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Select [0, !GetAZs]
+
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref DefaultVPC
+      CidrBlock: !Select [0, !GetAZs]
+      AvailabilityZone: !Ref AvailabilityZone
