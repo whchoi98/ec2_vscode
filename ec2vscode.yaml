@@ -25,18 +25,19 @@ Parameters:
       - "AmazonLinux2023"
     Default: "AmazonLinux2023"
 
+  AmazonLinux2AmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+
+  AmazonLinux2023AmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+
 Conditions:
   UseAmazonLinux2: !Equals [!Ref AMIType, "AmazonLinux2"]
   UseAmazonLinux2023: !Equals [!Ref AMIType, "AmazonLinux2023"]
 
 Resources:
-  LatestAmiId:
-    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
-    Default: !If 
-      - UseAmazonLinux2
-      - "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
-      - "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
-
   ServerRoleSSM:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -88,7 +89,7 @@ Resources:
       PrivateDnsEnabled: True
       SubnetIds: 
         - Ref: PublicSubnet
-      SecurityGroupIds:
+      SecurityGroupIds: 
         - Ref: SSMSG
 
   SSMMEndpoint:
@@ -108,7 +109,10 @@ Resources:
     Properties:
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyPair
-      ImageId: !Ref LatestAmiId
+      ImageId: !If 
+        - UseAmazonLinux2
+        - !Ref AmazonLinux2AmiId
+        - !Ref AmazonLinux2023AmiId
       IamInstanceProfile: !Ref InstanceProfileSSM
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
