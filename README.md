@@ -37,6 +37,8 @@ Ensure your AWS CLI is configured with the `ap-northeast-2` region:
 ```bash
 source ~/.bash_profile
 export AWS_REGION=ap-northeast-2
+./defaultvpcid.sh
+source ~/.bashrc
 ```
 
 CloudFormation 스택 배포:
