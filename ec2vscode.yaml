@@ -77,6 +77,28 @@ Resources:
       CidrBlock: '172.31.0.0/20'
       AvailabilityZone: !Ref AvailabilityZone
 
+  InstanceProfileSSM:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: ServerRoleSSM
+
+  ServerRoleSSM:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - ec2.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+      Path: "/"
+
   EC2Instance:
     Type: 'AWS::EC2::Instance'
     Properties:
@@ -127,7 +149,7 @@ Resources:
   DefaultVPCId:
     Type: 'AWS::EC2::VPC'
     Properties:
-      VpcId: !Ref DefaultVPCId
+      CidrBlock: '172.31.0.0/16'
 
   SSMEndpoint:
     Type: 'AWS::EC2::VPCEndpoint'
