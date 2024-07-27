@@ -28,9 +28,9 @@ Parameters:
 Mappings:
   AMIMapping:
     "AmazonLinux2":
-      "ap-northeast-2": "resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+      "ap_northeast_2": "resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
     "AmazonLinux2023":
-      "ap-northeast-2": "resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+      "ap_northeast_2": "resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
 
 Resources:
   ServerRoleSSM:
@@ -104,7 +104,7 @@ Resources:
     Properties:
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyPair
-      ImageId: !FindInMap [AMIMapping, !Ref AMIType, !Ref "AWS::Region"]
+      ImageId: !FindInMap [AMIMapping, !Ref AMIType, ap_northeast_2]
       IamInstanceProfile: !Ref InstanceProfileSSM
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
