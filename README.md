@@ -45,13 +45,15 @@ Deploy the CloudFormation stack:
 
 ```bash
 aws cloudformation deploy \
-  --region ${AWS_REGION} \
-  --stack-name "ec2vscode" \
-  --template-file "/home/cloudshell-user/ec2_vscode/ec2vscode.yaml" \
+  --template-file path/to/your/template.yaml \
+  --stack-name YourStackName \
   --parameter-overrides \
-    "KeyPair=ec2vscode" \
-    "InstanceType=t3.xlarge" \
-    "VSCodeServerPassword=1234Qwer" \
+    KeyPair=your-key-pair-name \
+    InstanceType=t3.xlarge \
+    AMIType=AmazonLinux2023 \
+    VSCodeServerPassword=your-password \
+    DefaultVPCId=$DEFAULT_VPC_ID \
+    PublicSubnetId=$PUBLIC_SUBNET_ID \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
