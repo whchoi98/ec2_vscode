@@ -33,6 +33,11 @@ Parameters:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
 
+  VSCodeServerPassword:
+    Description: "Password for accessing VS Code Server"
+    Type: String
+    NoEcho: true # 보안을 위해 콘솔에 비밀번호가 표시되지 않도록 설정
+
 Conditions:
   UseAmazonLinux2: !Equals [!Ref AMIType, "AmazonLinux2"]
   UseAmazonLinux2023: !Equals [!Ref AMIType, "AmazonLinux2023"]
@@ -76,6 +81,10 @@ Resources:
           CidrIp: 0.0.0.0/0
           FromPort: 443
           ToPort: 443
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 8080
+          ToPort: 8080
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-SSMSG'
@@ -132,6 +141,7 @@ Resources:
           tar -xzf code-server-4.0.1-linux-amd64.tar.gz
           mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+          PASSWORD_HASH=$(echo -n "${VSCodeServerPassword}" | sha256sum | awk '{print $1}')
           cat <<EOF > /etc/systemd/system/code-server.service
           [Unit]
           Description=VS Code Server
@@ -139,7 +149,7 @@ Resources:
           [Service]
           Type=simple
           User=ec2-user
-          ExecStart=/usr/local/bin/code-server --bind-addr 0.0.0.0:8080
+          ExecStart=/usr/local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password --password \$PASSWORD_HASH
           Restart=always
           [Install]
           WantedBy=multi-user.target
@@ -153,12 +163,24 @@ Resources:
   InstanceSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: Enable SSH and HTTP access
+      GroupDescription: Enable SSH, HTTP, and HTTPS access
       VpcId: !Ref DefaultVPC
       SecurityGroupIngress:
+        - IpProtocol: icmp
+          CidrIp: 0.0.0.0/0
+          FromPort: "-1"
+          ToPort: "-1"
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 8080
