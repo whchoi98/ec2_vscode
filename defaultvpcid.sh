@@ -34,3 +34,4 @@ source ~/.bashrc
 echo "환경 변수 설정이 완료되었습니다."
 echo "DEFAULT_VPC_ID: $DEFAULT_VPC_ID"
 echo "PUBLIC_SUBNET_ID: $PUBLIC_SUBNET_ID"
+source ~/.bashrc
