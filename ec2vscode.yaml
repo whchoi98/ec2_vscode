@@ -73,6 +73,23 @@ Resources:
       GroupDescription: Open-up ports for HTTP/S from All network
       VpcId: !Ref DefaultVPC
       SecurityGroupIngress:
+        - IpProtocol: icmp
+          CidrIp: 0.0.0.0/0
+          FromPort: "-1"
+          ToPort: "-1"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "22"
+          ToPort: "22"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "80"
+          ToPort: "80"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "443"
+          ToPort: "443"
+          
         - IpProtocol: tcp
           CidrIp: 0.0.0.0/0
           FromPort: 80
