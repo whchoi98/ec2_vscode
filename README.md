@@ -8,8 +8,7 @@ This repository contains an AWS CloudFormation template for deploying an EC2 ins
 ## 사전 요구 사항 / Prerequisites
 
 1. AWS CLI가 설치되고 적절한 권한으로 구성되어 있어야 합니다.AWS CLI installed and configured with appropriate permissions.
-2. `ap-northeast-2` 리전에 기존 EC2 키 페어가 있어야 합니다.An existing EC2 key pair in the `ap-northeast-2` region.
-3. IAM 역할 생성을 위한 AWS CloudFormation 권한이 필요합니다.AWS CloudFormation capabilities to create IAM roles.
+2. IAM 역할 생성을 위한 AWS CloudFormation 권한이 필요합니다.AWS CloudFormation capabilities to create IAM roles.
 
 ## 시작하기 / Getting Started
 
@@ -19,7 +18,7 @@ This repository contains an AWS CloudFormation template for deploying an EC2 ins
 git clone https://github.com/whchoi98/ec2_vscode.git
 ```
 
-### Pem Key 
+### Pem Key (Option)
 ```
 cd ~
 ssh-keygen
@@ -50,7 +49,6 @@ aws cloudformation deploy \
   --template-file "/home/cloudshell-user/ec2_vscode/ec2vscode.yaml" \
   --stack-name YourStackName \
   --parameter-overrides \
-    KeyPair=your-key-pair-name \
     InstanceType=t3.xlarge \
     AMIType=AmazonLinux2023 \
     DefaultVPCId=$DEFAULT_VPC_ID \
