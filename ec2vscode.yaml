@@ -2,15 +2,20 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Deploy an EC2 instance with VS Code Server in a public subnet of the default VPC in ap-northeast-2 using Amazon Linux 2 or Amazon Linux 2023
 
 Parameters:
+  Region:
+    Description: "The AWS region where the resources will be deployed."
+    Type: String
+    Default: "ap-northeast-2"
+    
   AvailabilityZone:
     Description: "The Availability Zone where the EC2 instance will be deployed."
     Type: AWS::EC2::AvailabilityZone::Name
     Default: "ap-northeast-2a"
 
-  KeyPair:
-    Description: "Keypair to access the EC2 Instance"
-    Type: "AWS::EC2::KeyPair::KeyName"
-    Default: "mykey"
+#  KeyPair:
+#    Description: "Keypair to access the EC2 Instance"
+#    Type: "AWS::EC2::KeyPair::KeyName"
+#    Default: "mykey"
 
   InstanceType:
     Description: "EC2 instance type for the server"
@@ -79,7 +84,7 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !Ref InstanceType
-      KeyName: !Ref KeyPair
+ #     KeyName: !Ref KeyPair
       ImageId: !If 
         - UseAmazonLinux2
         - !Ref AmazonLinux2AmiId
