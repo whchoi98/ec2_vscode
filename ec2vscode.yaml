@@ -46,6 +46,7 @@ Conditions:
   UseAmazonLinux2023: !Equals [!Ref AMIType, "AmazonLinux2023"]
 
 Resources:
+  # EC2 인스턴스에 대한 보안 그룹 생성 / Create a security group for the EC2 instance
   InstanceSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -73,6 +74,7 @@ Resources:
           ToPort: 8080
           CidrIp: 0.0.0.0/0
 
+  # VS Code Server를 위한 EC2 인스턴스 생성 / Create an EC2 instance for VS Code Server
   EC2Instance:
     Type: 'AWS::EC2::Instance'
     Properties:
@@ -89,6 +91,7 @@ Resources:
           DeviceIndex: 0
           GroupSet:
             - !Ref InstanceSecurityGroup
+      # EC2 인스턴스 초기화 스크립트 / EC2 instance initialization script
       UserData:
         'Fn::Base64': !Sub |
           #!/bin/bash
@@ -101,6 +104,7 @@ Resources:
           tar -xzf code-server-4.0.1-linux-amd64.tar.gz
           mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+          # VS Code Server 설정 / Configure VS Code Server
           mkdir -p /home/ec2-user/.config/code-server
           cat <<EOF > /home/ec2-user/.config/code-server/config.yaml
           bind-addr: 0.0.0.0:8080
@@ -108,18 +112,16 @@ Resources:
           cert: false
           EOF
           chown -R ec2-user:ec2-user /home/ec2-user/.config
+          # VS Code Server 서비스 구성 / Configure VS Code Server service
           cat <<EOF > /etc/systemd/system/code-server.service
- 
           [Unit]
           Description=VS Code Server
           After=network.target
-
           [Service]
           Type=simple
           User=ec2-user
           ExecStart=/usr/local/bin/code-server --config /home/ec2-user/.config/code-server/config.yaml
           Restart=always
-
           [Install]
           WantedBy=multi-user.target
           EOF
@@ -130,6 +132,7 @@ Resources:
         - Key: Name
           Value: EC2VSCodeServer
 
+  # EC2 인스턴스 프로파일 생성 / Create an instance profile for EC2
   InstanceProfileSSM:
     Type: 'AWS::IAM::InstanceProfile'
     Properties:
@@ -137,6 +140,7 @@ Resources:
       Roles:
         - Ref: ServerRoleSSM
 
+  # SSM을 위한 IAM 역할 생성 / Create an IAM role for SSM
   ServerRoleSSM:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -148,10 +152,13 @@ Resources:
               Service: 
                 - ec2.amazonaws.com
             Action: "sts:AssumeRole"
+      # ManagedPolicyArns에서 관리자 권한 부여 / Grant Administrator Access in ManagedPolicyArns
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+        - "arn:aws:iam::aws:policy/AdministratorAccess"  # 주의: AdministratorAccess 정책은 전체 AWS 계정에 대한 거의 모든 작업을 허용합니다. 보안 및 비용 관리 측면에서 주의가 필요합니다. / Note: The AdministratorAccess policy grants broad permissions across the entire AWS account. Use with caution for security and cost management.
       Path: "/"
 
+  # SSM 엔드포인트 생성 / Create SSM VPC Endpoint
   SSMEndpoint:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
@@ -164,6 +171,7 @@ Resources:
       SecurityGroupIds: 
         - Ref: InstanceSecurityGroup
 
+  # SSM 메시지 엔드포인트 생성 / Create SSM Messages VPC Endpoint
   SSMMEndpoint:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
