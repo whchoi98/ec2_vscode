@@ -95,11 +95,19 @@ Resources:
       UserData:
         'Fn::Base64': !Sub |
           #!/bin/bash
+          # AWS CLI 최신 버전 설치 / Install the latest version of AWS CLI
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          # SSM 플러그인 설치 / Install SSM Plugin
+          sudo yum install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+          # 개발 도구 및 기타 필수 패키지 설치 / Install development tools and other necessary packages
           yum update -y || dnf update -y
           yum install -y git || dnf install -y git
           yum groupinstall -y "Development Tools" || dnf groupinstall -y "Development Tools"
           curl -sL https://rpm.nodesource.com/setup_14.x | bash -
           yum install -y nodejs || dnf install -y nodejs
+          # VS Code Server 설치 / Install VS Code Server
           wget https://github.com/coder/code-server/releases/download/v4.0.1/code-server-4.0.1-linux-amd64.tar.gz
           tar -xzf code-server-4.0.1-linux-amd64.tar.gz
           mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
