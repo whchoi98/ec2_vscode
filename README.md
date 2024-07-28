@@ -1,7 +1,7 @@
 
 # EC2 VS Code Server 배포 / EC2 VS Code Server Deployment
 
-이 리포지토리는 기본 VPC에서 Amazon EC2 인스턴스에 VS Code 서버를 배포하는 AWS CloudFormation 템플릿을 포함하고 있습니다. 이 인스턴스는 AWS Systems Manager(SSM)를 지원하여 원격 관리가 가능하며, 개발에 필요한 도구들이 사전 설치되어 있습니다.
+이 리포지토리는 Default VPC에서 Amazon EC2 인스턴스에 VS Code 서버를 배포하는 AWS CloudFormation 템플릿을 포함하고 있습니다. 이 인스턴스는 AWS Systems Manager(SSM)를 지원하여 원격 관리가 가능하며, 개발에 필요한 도구들이 사전 설치되어 있습니다.
 
 This repository contains an AWS CloudFormation template for deploying an EC2 instance with VS Code Server in a default VPC. The instance supports AWS Systems Manager (SSM) for remote management and comes pre-installed with necessary tools for development.
 
