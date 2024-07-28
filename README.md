@@ -85,10 +85,19 @@ aws cloudformation deploy \
 
 ## EC2 VS Code Server로 연결 및 보안 설정 / Connect to EC2 VS Code Server and Set Security
 
-EC2VSCodeServer IP Check ((in Cloudshell or Others Terminal)
+## IP Address 확인 / Check IP Address (in Cloudshell or Others Terminal)
+
+서버의 Public IP를 확인하려면 아래 스크립트를 사용하세요:
+
+To check the server's Public IP, use the script below:
+
+```bash
+./vscode_ip.sh
+```
 
 ```
-~/ec2_vscode/vscode_ip.sh
+$ ./vscode_ip.sh
+EC2VSCodeServer = xxx.xxx.xxx.xxx
 ```
 
 EC2가 완전하게 배포된 후 3~5분 뒤에 브라우저에서 EC2VSCodeServer PublicIP:8080으로 접속합니다.
@@ -109,22 +118,8 @@ Check the password configuration, change it to an appropriate password, and then
 
 ```bash
 cat ~/ec2_vscode/vscode_pwd.sh
+
 ~/ec2_vscode/vscode_pwd.sh
-```
-
-## IP Address 확인 / Check IP Address
-
-서버의 Public IP를 확인하려면 아래 스크립트를 사용하세요:
-
-To check the server's Public IP, use the script below:
-
-```bash
-./vscode_ip.sh
-```
-
-```
-$ ./vscode_ip.sh
-EC2VSCodeServer = xxx.xxx.xxx.xxx
 ```
 
 더 자세한 구성 및 커스터마이징 옵션에 대해서는 이 리포지토리의 CloudFormation 템플릿을 참조하세요.
