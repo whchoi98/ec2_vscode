@@ -51,7 +51,7 @@ Deploy the CloudFormation stack:
 ```bash
 aws cloudformation deploy \
   --template-file "~/ec2_vscode/ec2vscode.yaml" \
-  --stack-name {YourStackName} \
+  --stack-name=ec2vscodeserver \
   --parameter-overrides \
     InstanceType=t3.xlarge \
     AMIType=AmazonLinux2023 \
