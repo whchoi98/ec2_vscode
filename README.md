@@ -92,11 +92,11 @@ aws cloudformation deploy \
 To check the server's Public IP, use the script below:
 
 ```bash
-./vscode_ip.sh
+~/ec2_vscode/vscode_ip.sh
 ```
 
 ```
-$ ./vscode_ip.sh
+$ ~/ec2_vscode/vscode_ip.sh
 EC2VSCodeServer = xxx.xxx.xxx.xxx
 ```
 
