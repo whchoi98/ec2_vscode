@@ -108,8 +108,8 @@ git clone https://github.com/whchoi98/ec2_vscode.git
 Check the password configuration, change it to an appropriate password, and then run the following script:
 
 ```bash
-cat ~/vscode_pwd.sh
-~/vscode_pwd.sh
+cat ~/ec2_vscode/vscode_pwd.sh
+~/ec2_vscode/vscode_pwd.sh
 ```
 
 ## IP Address 확인 / Check IP Address
