@@ -15,7 +15,7 @@ This repository contains an AWS CloudFormation template for deploying an EC2 ins
 
 ## 시작하기 / Getting Started
 
-### Clone the Repository
+### Clone the Repository (in Cloudshell or Others Terminal)
 
 ```bash
 git clone https://github.com/whchoi98/ec2_vscode.git
@@ -31,7 +31,7 @@ chmod 400 ./ec2vscode.pem
 aws ec2 import-key-pair --key-name "ec2vscode" --public-key-material fileb://./ec2vscode.pub
 ```
 
-### CloudFormation 스택 배포 / Deploy the CloudFormation Stack
+### CloudFormation 스택 배포 / Deploy the CloudFormation Stack (in Cloudshell or Others Terminal)
 
 AWS CLI가 `ap-northeast-2` 리전으로 설정되어 있는지 확인하세요:
 
@@ -60,7 +60,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
-## 파라미터 / Parameters
+## 파라미터 / Parameters (in Cloudshell or Others Terminal)
 
 - **InstanceType**: 배포할 EC2 인스턴스 유형 (기본값: `t3.xlarge`)
 - **AMIType**: 배포할 기본 Image (기본값: `AmazonLinux2023`)
@@ -84,6 +84,12 @@ aws cloudformation deploy \
 - Regularly update your EC2 instance to apply security patches.
 
 ## EC2 VS Code Server로 연결 및 보안 설정 / Connect to EC2 VS Code Server and Set Security
+
+EC2VSCodeServer IP Check ((in Cloudshell or Others Terminal)
+
+```
+~/ec2_vscode/vscode_ip.sh
+```
 
 EC2가 완전하게 배포된 후 3~5분 뒤에 브라우저에서 EC2VSCodeServer PublicIP:8080으로 접속합니다.
 EC2VSCodeServer Terminal에서 아래를 실행합니다.
