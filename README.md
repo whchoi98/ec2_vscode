@@ -46,7 +46,7 @@ Deploy the CloudFormation stack:
 
 ```bash
 aws cloudformation deploy \
-  --template-file "/home/cloudshell-user/ec2_vscode/ec2vscode.yaml" \
+  --template-file "~/ec2_vscode/ec2vscode.yaml" \
   --stack-name YourStackName \
   --parameter-overrides \
     InstanceType=t3.xlarge \
@@ -86,6 +86,27 @@ aws cloudformation deploy \
 $ ./vscode_ip.sh
 EC2VSCodeServer = xxx.xxx.xxx.xxx
 ```
+
+## EC2 VS Code Server로 연결 및 보안설정
+
+EC2가 완전하게 배포된 후 3~5분 뒤에 브라우저에서 EC2VSCodeServer PublicIP:8080으로 접속합니다.
+EC2VSCodeServer Terminal에서 아래를 실행합니다.
+
+```bash
+git clone https://github.com/whchoi98/ec2_vscode.git
+```
+
+```
+cat ~/vscode_pwd.sh
+```
+
+Password 설정을 확인하고, 적절한 패스워드으로 변경한 이후 다시 실행합니다.
+
+```
+~/vscode_pwd.sh
+```
+
+
 
 더 자세한 구성 및 커스터마이징 옵션에 대해서는 이 리포지토리의 CloudFormation 템플릿을 참조하세요.
 
