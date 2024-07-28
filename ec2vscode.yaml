@@ -91,6 +91,12 @@ Resources:
           DeviceIndex: 0
           GroupSet:
             - !Ref InstanceSecurityGroup
+      # 루트 볼륨 크기 및 타입 설정 / Set root volume size and type
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20  # 20GB
+            VolumeType: gp3
       # EC2 인스턴스 초기화 스크립트 / EC2 instance initialization script
       UserData:
         'Fn::Base64': !Sub |
