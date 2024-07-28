@@ -92,9 +92,12 @@ EC2VSCodeServer IP Check ((in Cloudshell or Others Terminal)
 ```
 
 EC2가 완전하게 배포된 후 3~5분 뒤에 브라우저에서 EC2VSCodeServer PublicIP:8080으로 접속합니다.
-EC2VSCodeServer Terminal에서 아래를 실행합니다.
 
 After the EC2 is fully deployed, access the server via a browser at `EC2VSCodeServer PublicIP:8080`. Then, execute the following commands in the EC2VSCodeServer terminal:
+
+<img width="588" alt="image" src="https://github.com/user-attachments/assets/c1e6cd3c-6693-4fad-b201-b032353c1462">
+
+EC2VSCodeServer Terminal에서 아래를 실행합니다.
 
 ```bash
 git clone https://github.com/whchoi98/ec2_vscode.git
