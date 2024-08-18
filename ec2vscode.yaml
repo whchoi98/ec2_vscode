@@ -119,9 +119,9 @@ Resources:
           curl -sL https://rpm.nodesource.com/setup_14.x | bash -
           yum install -y nodejs || dnf install -y nodejs
           # VS Code Server 설치 / Install VS Code Server
-          wget https://github.com/coder/code-server/releases/download/v4.0.1/code-server-4.0.1-linux-amd64.tar.gz
-          tar -xzf code-server-4.0.1-linux-amd64.tar.gz
-          mv code-server-4.0.1-linux-amd64 /usr/local/lib/code-server
+          wget https://github.com/coder/code-server/releases/download/v4.91.1/code-server-4.91.1-linux-amd64.tar.gz
+          tar -xzf code-server-4.91.1-linux-amd64.tar.gz
+          mv code-server-4.91.1-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
           # VS Code Server 설정 / Configure VS Code Server
           mkdir -p /home/ec2-user/.config/code-server
