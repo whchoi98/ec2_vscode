@@ -118,6 +118,8 @@ Resources:
           yum groupinstall -y "Development Tools" || dnf groupinstall -y "Development Tools"
           curl -sL https://rpm.nodesource.com/setup_14.x | bash -
           yum install -y nodejs || dnf install -y nodejs
+          # jq 설치 / Install jq
+          yum install -y jq || dnf install -y jq
           # VS Code Server 설치 / Install VS Code Server
           wget https://github.com/coder/code-server/releases/download/v4.91.1/code-server-4.91.1-linux-amd64.tar.gz
           tar -xzf code-server-4.91.1-linux-amd64.tar.gz
