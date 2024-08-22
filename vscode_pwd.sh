@@ -1,7 +1,18 @@
 #!/bin/bash
 
-# 설정할 비밀번호
-PASSWORD="1234Qwer"
+# 사용자로부터 비밀번호 입력받기
+read -s -p "Enter the password to set: " PASSWORD
+echo
+
+# 비밀번호 확인을 위한 입력
+read -s -p "Confirm the password: " PASSWORD_CONFIRM
+echo
+
+# 두 비밀번호가 일치하는지 확인
+if [ "$PASSWORD" != "$PASSWORD_CONFIRM" ]; then
+    echo "Passwords do not match. Exiting."
+    exit 1
+fi
 
 # 비밀번호 해시 생성 (SHA-256)
 PASSWORD_HASH=$(echo -n "$PASSWORD" | sha256sum | awk '{print $1}')
