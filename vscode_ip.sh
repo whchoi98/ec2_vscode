@@ -8,4 +8,4 @@ PUBLIC_IP=$(aws ec2 describe-instances \
 
 # 결과 출력
 echo "EC2VSCodeServer = $PUBLIC_IP"
-echo "CodeServer Connect = $PUBLIC_IP:8080"
+echo "CodeServer Connect = $PUBLIC_IP:8888"
