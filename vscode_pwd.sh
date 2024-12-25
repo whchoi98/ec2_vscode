@@ -24,7 +24,7 @@ CONFIG_FILE="$CONFIG_DIR/config.yaml"
 # code-server 설정 파일 업데이트
 mkdir -p $CONFIG_DIR
 cat <<EOF > $CONFIG_FILE
-bind-addr: 0.0.0.0:8080
+bind-addr: 0.0.0.0:8888
 auth: password
 hashed-password: $PASSWORD_HASH
 cert: false
