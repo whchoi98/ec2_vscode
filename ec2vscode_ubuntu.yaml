@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy an EC2 instance with VS Code Server using Amazon Linux 2, Amazon Linux 2023, or Ubuntu 24.04 LTS
+Description: Deploy an EC2 instance with VS Code Server using Amazon Linux 2, Amazon Linux 2023, or Ubuntu 22.04 LTS
 
 Parameters:
   AMIType:
@@ -8,7 +8,7 @@ Parameters:
     AllowedValues:
       - AmazonLinux2
       - AmazonLinux2023
-      - Ubuntu2404
+      - Ubuntu2204
     Default: AmazonLinux2023
 
   InstanceType:
@@ -34,12 +34,12 @@ Parameters:
 
   UbuntuAmiId:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
-    Default: "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
+    Default: "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 
 Conditions:
   UseAmazonLinux2: !Equals [!Ref AMIType, AmazonLinux2]
   UseAmazonLinux2023: !Equals [!Ref AMIType, AmazonLinux2023]
-  UseUbuntu2404: !Equals [!Ref AMIType, Ubuntu2404]
+  UseUbuntu2204: !Equals [!Ref AMIType, Ubuntu2204]
 
 Resources:
   InstanceSecurityGroup:
