@@ -1,52 +1,56 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Deploy an EC2 instance with VS Code Server in a public subnet of the default VPC in ap-northeast-2 using Ubuntu 24.04 LTS
+Description: Deploy an EC2 instance with VS Code Server using Amazon Linux 2, Amazon Linux 2023, or Ubuntu 24.04 LTS
 
 Parameters:
-  Region:
-    Description: "The AWS region where the resources will be deployed."
+  AMIType:
+    Description: Select the operating system for the EC2 instance
     Type: String
-    Default: "ap-northeast-2"
-
-  AvailabilityZone:
-    Description: "The Availability Zone where the EC2 instance will be deployed."
-    Type: AWS::EC2::AvailabilityZone::Name
-    Default: "ap-northeast-2a"
+    AllowedValues:
+      - AmazonLinux2
+      - AmazonLinux2023
+      - Ubuntu2404
+    Default: Ubuntu2404
 
   InstanceType:
-    Description: "EC2 instance type for the server"
+    Description: EC2 instance type
     Type: String
-    Default: "t3.xlarge"
+    Default: t3.medium
+
+  DefaultVPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: Default VPC ID
+
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: A public subnet in the default VPC
+
+  AmazonLinux2AmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+
+  AmazonLinux2023AmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
 
   UbuntuAmiId:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 
-  DefaultVPCId:
-    Description: "The ID of the default VPC"
-    Type: AWS::EC2::VPC::Id
-
-  PublicSubnetId:
-    Description: "The ID of a public subnet in the default VPC"
-    Type: AWS::EC2::Subnet::Id
+Conditions:
+  UseAmazonLinux2: !Equals [!Ref AMIType, AmazonLinux2]
+  UseAmazonLinux2023: !Equals [!Ref AMIType, AmazonLinux2023]
+  UseUbuntu2404: !Equals [!Ref AMIType, Ubuntu2404]
 
 Resources:
   InstanceSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH, HTTPS, and VS Code Server access
+      GroupDescription: Allow SSH and VS Code ports
       VpcId: !Ref DefaultVPCId
       SecurityGroupIngress:
-        - IpProtocol: icmp
-          CidrIp: 0.0.0.0/0
-          FromPort: -1
-          ToPort: -1
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 8888
@@ -54,10 +58,16 @@ Resources:
           CidrIp: 0.0.0.0/0
 
   EC2Instance:
-    Type: 'AWS::EC2::Instance'
+    Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: !Ref UbuntuAmiId
+      ImageId: !If
+        - UseAmazonLinux2
+        - !Ref AmazonLinux2AmiId
+        - !If
+            - UseAmazonLinux2023
+            - !Ref AmazonLinux2023AmiId
+            - !Ref UbuntuAmiId
       IamInstanceProfile: !Ref InstanceProfileSSM
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
@@ -71,23 +81,32 @@ Resources:
             VolumeSize: 20
             VolumeType: gp3
       UserData:
-        'Fn::Base64': !Sub |
+        Fn::Base64: !Sub |
           #!/bin/bash
-          apt-get update && apt-get upgrade -y
-          apt-get install -y unzip curl wget git jq build-essential
+          set -e
+          OS=$(uname -a)
 
-          # Install AWS CLI v2
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-
-          # Install session-manager-plugin
-          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
-          sudo dpkg -i session-manager-plugin.deb
-
-          # Install Node.js (LTS)
-          curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-          apt-get install -y nodejs
+          if grep -qi amazon /etc/os-release; then
+            yum update -y || dnf update -y
+            yum install -y git jq curl wget unzip
+            yum groupinstall -y "Development Tools" || true
+            curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+            yum install -y nodejs
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip && sudo ./aws/install
+            yum install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm || true
+            USERNAME=ec2-user
+          else
+            apt-get update && apt-get upgrade -y
+            apt-get install -y git jq curl wget unzip build-essential
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+            apt-get install -y nodejs
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip && sudo ./aws/install
+            curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+            dpkg -i session-manager-plugin.deb || true
+            USERNAME=ubuntu
+          fi
 
           # Install VS Code Server
           wget https://github.com/coder/code-server/releases/download/v4.96.4/code-server-4.96.4-linux-amd64.tar.gz
@@ -95,16 +114,14 @@ Resources:
           mv code-server-4.96.4-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
 
-          # Configure VS Code Server
-          mkdir -p /home/ubuntu/.config/code-server
-          cat <<EOF > /home/ubuntu/.config/code-server/config.yaml
+          mkdir -p /home/${USERNAME}/.config/code-server
+          cat <<EOF > /home/${USERNAME}/.config/code-server/config.yaml
           bind-addr: 0.0.0.0:8888
           auth: none
           cert: false
           EOF
-          chown -R ubuntu:ubuntu /home/ubuntu/.config
+          chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.config
 
-          # Systemd service for code-server
           cat <<EOF > /etc/systemd/system/code-server.service
           [Unit]
           Description=VS Code Server
@@ -112,8 +129,8 @@ Resources:
 
           [Service]
           Type=simple
-          User=ubuntu
-          ExecStart=/usr/local/bin/code-server --config /home/ubuntu/.config/code-server/config.yaml
+          User=${USERNAME}
+          ExecStart=/usr/local/bin/code-server --config /home/${USERNAME}/.config/code-server/config.yaml
           Restart=always
 
           [Install]
@@ -123,19 +140,16 @@ Resources:
           systemctl daemon-reload
           systemctl enable code-server
           systemctl start code-server
-      Tags:
-        - Key: Name
-          Value: EC2VSCodeServer-Ubuntu
 
   InstanceProfileSSM:
-    Type: 'AWS::IAM::InstanceProfile'
+    Type: AWS::IAM::InstanceProfile
     Properties:
       Path: "/"
       Roles:
         - Ref: ServerRoleSSM
 
   ServerRoleSSM:
-    Type: 'AWS::IAM::Role'
+    Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -150,31 +164,7 @@ Resources:
         - "arn:aws:iam::aws:policy/AdministratorAccess"
       Path: "/"
 
-  SSMEndpoint:
-    Type: 'AWS::EC2::VPCEndpoint'
-    Properties:
-      VpcId: !Ref DefaultVPCId
-      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: True
-      SubnetIds:
-        - Ref: PublicSubnetId
-      SecurityGroupIds:
-        - Ref: InstanceSecurityGroup
-
-  SSMMEndpoint:
-    Type: 'AWS::EC2::VPCEndpoint'
-    Properties:
-      VpcId: !Ref DefaultVPCId
-      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: True
-      SubnetIds:
-        - Ref: PublicSubnetId
-      SecurityGroupIds:
-        - Ref: InstanceSecurityGroup
-
 Outputs:
-  EC2InstancePublicIP:
-    Description: "Public IP address of the VS Code Server EC2 instance"
+  InstancePublicIp:
+    Description: Public IP of the EC2 instance
     Value: !GetAtt EC2Instance.PublicIp
