@@ -114,13 +114,13 @@ Resources:
           mv code-server-4.96.4-linux-amd64 /usr/local/lib/code-server
           ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
 
-          mkdir -p /home/\${USERNAME}/.config/code-server
-          cat <<EOF > /home/\${USERNAME}/.config/code-server/config.yaml
+          mkdir -p /home/$USERNAME/.config/code-server
+          cat <<EOF > /home/$USERNAME/.config/code-server/config.yaml
           bind-addr: 0.0.0.0:8888
           auth: none
           cert: false
           EOF
-          chown -R \${USERNAME}:\${USERNAME} /home/\${USERNAME}/.config
+          chown -R $USERNAME:$USERNAME /home/$USERNAME/.config
 
           cat <<EOF > /etc/systemd/system/code-server.service
           [Unit]
@@ -129,8 +129,8 @@ Resources:
 
           [Service]
           Type=simple
-          User=\${USERNAME}
-          ExecStart=/usr/local/bin/code-server --config /home/\${USERNAME}/.config/code-server/config.yaml
+          User=$USERNAME
+          ExecStart=/usr/local/bin/code-server --config /home/$USERNAME/.config/code-server/config.yaml
           Restart=always
 
           [Install]
