@@ -9,7 +9,7 @@ Parameters:
       - AmazonLinux2
       - AmazonLinux2023
       - Ubuntu2404
-    Default: Ubuntu2404
+    Default: AmazonLinux2023
 
   InstanceType:
     Description: EC2 instance type
