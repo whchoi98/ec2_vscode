@@ -1011,3 +1011,15 @@ Outputs:
     Value: !Ref PrivateSubnetB
     Export:
       Name: !Sub "${AWS::StackName}-PrivateSubnetB"
+
+  InternetALBDNSName:
+    Description: DNS name of Internet-facing ALB
+    Value: !GetAtt InternetALB2.DNSName
+    Export:
+      Name: !Sub "${AWS::StackName}-InternetALB2-DNS"
+
+  PrivateALBDNSName:
+    Description: DNS name of Internal ALB
+    Value: !GetAtt PrivateALB1.DNSName
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateALB1-DNS"
