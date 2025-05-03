@@ -1,0 +1,1013 @@
+#BUCKET_NAME="my-templates-bucket"
+#
+## S3 버킷 생성
+#aws s3 mb s3://$BUCKET_NAME --region eu-central-1
+#
+## CloudFormation 템플릿 배포
+# aws cloudformation deploy \
+#  --region eu-central-1 \
+#  --stack-name "VPC01" \
+#  --template-file "~/eu_central_1_VPC01.yaml" \
+#  --s3-bucket "$BUCKET_NAME" \
+#  --capabilities CAPABILITY_NAMED_IAM
+#########################################################################################################
+# 1 VPC, 1 NATGW, 2 AZ, 1 Public RT, 2 Private RT, 2 Publice Subnet, 2 Private Subnet, 2 Attach Subnet  #
+# ap-northeast-2 #
+#########################################################################################################
+
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+      - Label:
+          default: "VPC Parameters"
+        Parameters:
+         - AvailabilityZoneA
+         - AvailabilityZoneB
+         - VPCCIDRBlock
+         - PublicSubnetABlock
+         - PublicSubnetBBlock
+         - PrivateSubnetABlock
+         - PrivateSubnetBBlock
+         - AttachSubnetABlock
+         - AttachSubnetBBlock
+         - InstanceType
+
+############################################################################################
+############################################################################################
+# Create Parmeters                              ############################################
+############################################################################################
+############################################################################################
+
+################################################################################################
+# Create-Parameters : AZ,VPC CIDR Blcok, Public, Private Subnet Block, InstanceType
+# PublicKey, AMIid
+################################################################################################
+
+Parameters:
+  AvailabilityZoneA:
+    Description: "Choose AZ1 for your VPC."
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: "ap-northeast-2a"
+  AvailabilityZoneB:
+    Description: "Choose AZ2 for your VPC."
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: "ap-northeast-2b"
+
+  VPCCIDRBlock:
+    Type: String
+    Default: 10.254.0.0/16
+    Description: "The CIDR range for the VPC. This should be a valid private (RFC 1918) CIDR range."
+
+  PublicSubnetABlock:
+    Type: String
+    Default: 10.254.11.0/24
+    Description: "CidrBlock for AZ A public subnet A within the VPC"
+
+  PublicSubnetBBlock:
+    Type: String
+    Default: 10.254.12.0/24
+    Description: "CidrBlock for AZ B public subnet B within the VPC" 
+
+  PrivateSubnetABlock:
+    Type: String
+    Default: 10.254.21.0/24
+    Description: "CidrBlock for AZ A private subnet A within the VPC"
+
+  PrivateSubnetBBlock:
+    Type: String
+    Default: 10.254.22.0/24
+    Description: "CidrBlock for AZ B private subnet B within the VPC"
+ 
+  AttachSubnetABlock:
+    Type: String
+    Default: 10.254.251.0/24
+    Description: "CidrBlock for AZ A TGW subnet A within the VPC"
+
+  AttachSubnetBBlock:
+    Type: String
+    Default: 10.254.252.0/24
+    Description: "CidrBlock for AZ B TGW subnet B within the VPC"
+
+  InstanceType1:
+    Type: String
+    Default: "m6.2xlarge"
+    Description: EC2 Instance Type for Basic EC2.
+
+  InstanceType2:
+    Type: String
+    Default: "m6.8xlarge"
+    Description: EC2 Instance Type for Mgmt EC2.
+
+  InstanceType3:
+    Type: String
+    Default: "c6.12xlarge"
+    Description: EC2 Instance Type for Performance EC2.
+
+  AmazonLinux2023AmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+
+############################################################################################
+############################################################################################
+# Create Resource                            ###############################################
+############################################################################################
+############################################################################################
+
+Resources:
+
+############################################################################################
+############################################################################################
+# Create VPC                                 ###############################################
+############################################################################################
+############################################################################################
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCIDRBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}'
+        - Key: project
+          Value: !Sub '${AWS::StackName}'
+
+
+############################################################################################
+############################################################################################
+# Create IGW                                 ###############################################
+############################################################################################
+############################################################################################
+
+
+###############################################################
+# Create-IGW: Create VPC InternetGateway and VPC Attach #
+###############################################################
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-IGW'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+############################################################################################
+############################################################################################
+# Create NATGW                               ###############################################
+############################################################################################
+############################################################################################
+
+
+#############################################################
+# Create-NATGW: Create VPC NATGateway and PublicSubnet Assign
+#############################################################
+
+  NatGatewayAEIP:
+    DependsOn:
+    - AttachGateway
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-NATGW-A-EIP'
+
+  NatGatewayA:
+    DependsOn:
+    - NatGatewayAEIP
+    - PublicSubnetA
+    - AttachGateway
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt 'NatGatewayAEIP.AllocationId'
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-NATGW-A'
+
+  NatGatewayBEIP:
+    DependsOn:
+    - AttachGateway
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-NATGW-B-EIP'
+
+  NatGatewayB:
+    DependsOn:
+    - NatGatewayBEIP
+    - PublicSubnetB
+    - AttachGateway
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt 'NatGatewayBEIP.AllocationId'
+      SubnetId: !Ref PublicSubnetB
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-NATGW-B'
+############################################################################################
+############################################################################################
+# Create Subnets and RouteTables              ###############################################
+############################################################################################
+############################################################################################
+
+####################################################
+# Create-Public-Subnet: VPC Public_Subnet_a,b #
+####################################################
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetABlock
+      AvailabilityZone: !Ref AvailabilityZoneA
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PublicSubnetA'
+        - Key: kubernetes.io/role/elb
+          Value: 1
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetBBlock
+      AvailabilityZone: !Ref AvailabilityZoneB
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PublicSubnetB'
+        - Key: kubernetes.io/role/elb
+          Value: 1
+
+################################################
+# Create-RouteTable: Public Route Table        #
+################################################
+
+  PublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PublicRT'
+
+  PublicRoute:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+######################################################################################################
+# Associate-Publice-RouteTable: VPC Public Subnet a,b Accsociate VPC Public Subnet Route Table       #
+######################################################################################################
+
+  PublicSubnetRouteTableAAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicSubnetRouteTable
+
+  PublicSubnetRouteTableBAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicSubnetRouteTable
+
+#############################################################
+# Create-Private-Subnet: Create VPC Private_Subnet_a,b      #
+#############################################################
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetABlock
+      AvailabilityZone: !Ref AvailabilityZoneA
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PrivateSubnetA'
+        - Key: kubernetes.io/role/internal-elb
+          Value: 1
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetBBlock
+      AvailabilityZone: !Ref AvailabilityZoneB
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PrivateSubnetB'
+        - Key: kubernetes.io/role/internal-elb
+          Value: 1
+
+#####################################################################
+# Create-Private-RouteTable: Create VPC_Private_RouteTable_a,b      #
+#####################################################################
+  PrivateSubnetARouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Private-Subnet-A-RT'
+
+  PrivateSubnetBRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Private-Subnet-B-RT'
+
+  PrivateSubnetARoute1:
+    DependsOn:
+    - AttachGateway
+    - NatGatewayA
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnetARouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+
+  PrivateSubnetBRoute1:
+    DependsOn:
+    - AttachGateway
+    - NatGatewayB
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnetBRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+
+
+################################################################################################
+# Associate-Private-RouteTable: VPC_Private_Subnet_a,b Accsociate VPC_Private_RouteTable #
+################################################################################################
+
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA   
+      RouteTableId: !Ref PrivateSubnetARouteTable
+
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateSubnetBRouteTable
+
+#############################################################
+# CreateAttachSubnet: Create VPC TGW_Subnet_a,b #
+#############################################################
+
+  AttachSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref AttachSubnetABlock
+      AvailabilityZone: !Ref AvailabilityZoneA
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-AttachSubnetA'
+
+  AttachSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref AttachSubnetBBlock
+      AvailabilityZone: !Ref AvailabilityZoneB
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-AttachSubnetB'
+
+#####################################################################
+# CreateCloudWANRouteTable: Create VPC_CloudWAN_RouteTable_a,b #
+#####################################################################
+
+  AttachSubnetARouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}AttachSubnet-A-RT'
+
+  AttachSubnetBRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}AttachSubnet-B-RT'
+ 
+  AttachSubnetARoute1:
+    DependsOn:
+    - AttachGateway
+    - NatGatewayA
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref AttachSubnetARouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+
+  AttachSubnetBRoute1:
+    DependsOn:
+    - AttachGateway
+    - NatGatewayA
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref AttachSubnetBRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+      
+      
+################################################################################################
+# AssociateCloudWANRouteTable: VPC_CloudWAN_Subnet_a,b Accsociate VPC_CloudWAN_RouteTable #
+################################################################################################
+
+  AttachSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AttachSubnetA   
+      RouteTableId: !Ref AttachSubnetARouteTable
+
+  AttachSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AttachSubnetB
+      RouteTableId: !Ref AttachSubnetBRouteTable
+
+
+############################################################################################
+############################################################################################
+# Create Security Groups                            ########################################
+############################################################################################
+############################################################################################
+
+
+###############################################################################
+# Create-Security-Group: Public EC2 Security Groups #
+###############################################################################
+
+  PublicEC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open-up ports for ICMP and SSH,HTTP/S from All network
+      GroupName:  PublicEC2SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          CidrIp: 0.0.0.0/0
+          FromPort: "-1"
+          ToPort: "-1"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "22"
+          ToPort: "22"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "80"
+          ToPort: "80"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "443"
+          ToPort: "443"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PublicSG'
+
+###############################################################################
+# Create-Security-Group: Private EC2 Security Groups #
+###############################################################################
+
+  PrivateEC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open-up ports for ICMP and SSH,HTTP/S from All network
+      GroupName: PrivateEC2SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          CidrIp: 0.0.0.0/0
+          FromPort: "-1"
+          ToPort: "-1"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "22"
+          ToPort: "22"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "80"
+          ToPort: "80"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "443"
+          ToPort: "443"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-PrivateSG'
+
+###############################################################################
+# Create-Security-Group: ALB Security Groups #
+###############################################################################
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open-up ports for HTTP/S from All network
+      GroupName:  ALBSecurityGroup
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "80"
+          ToPort: "80"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "443"
+          ToPort: "443"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ALB-SG'
+###############################################################################
+# Create-Security-Group: System Manager Security Groups #
+###############################################################################
+
+  SSMSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open-up ports for HTTP/S from All network
+      GroupName: SSMSG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "80"
+          ToPort: "80"
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: "443"
+          ToPort: "443"
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-SSMSG'
+
+
+############################################################################################
+############################################################################################
+# Create IAM Role                                   ########################################
+############################################################################################
+############################################################################################
+
+
+##########################################
+# Create-EC2Role: Create EC2 ServerRole  #
+##########################################
+
+  ServerRoleSSM:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-SSMRole'
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+  InstanceProfileSSM:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: 
+        - Ref: ServerRoleSSM
+
+
+############################################################################################
+############################################################################################
+# Create ELB                                 ###############################################
+############################################################################################
+############################################################################################
+
+## https://docs.aws.amazon.com/ko_kr/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
+######################################################################
+# Create Internet-facing ALB (InternetALB2) and Listener
+######################################################################
+  InternetALB2: 
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties: 
+      Name: !Sub "${AWS::StackName}-InternetALB2"
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-InternetALB2"
+      Scheme: "internet-facing"
+      LoadBalancerAttributes: 
+        - Key: "deletion_protection.enabled"
+          Value: false
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 60
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets: 
+        - Ref: PublicSubnetA
+        - Ref: PublicSubnetB
+      Type: application 
+
+  ALBPrivateListener1: 
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties: 
+      DefaultActions: 
+        - TargetGroupArn: !Ref ALBPrivateTargetGroup1
+          Type: forward
+      LoadBalancerArn: !Ref InternetALB2
+      Port: 80
+      Protocol: HTTP
+
+######################################################################
+# Target Group for VSCode in Private Subnet (port 8080)
+######################################################################
+  ALBPrivateTargetGroup1: 
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties: 
+      VpcId: !Ref VPC
+      Name: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
+      Protocol: HTTP
+      Port: 8888  # VSCode Server listens on 8080
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckPort: "8080"
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher: 
+        HttpCode: 200
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
+      TargetGroupAttributes: 
+        - Key: "deregistration_delay.timeout_seconds"
+          Value: 300
+        - Key: "stickiness.enabled"
+          Value: false
+      Targets: 
+        - Id: !Ref VSCodeServer
+          Port: 8888
+
+######################################################################
+# Security Group Example (VSCode SG)
+######################################################################
+  VSCodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow ALB to access VSCode port
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8888
+          ToPort: 8888
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+######################################################################
+# Internet-facing ALB for Public Access (ALB → EC2:8080)
+######################################################################
+  InternetALB2: 
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties: 
+      Name: !Sub "${AWS::StackName}-InternetALB2"
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-InternetALB2"
+      Scheme: "internet-facing"
+      LoadBalancerAttributes: 
+        - Key: "deletion_protection.enabled"
+          Value: false
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 60
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets: 
+        - Ref: PublicSubnetA
+        - Ref: PublicSubnetB
+      Type: application 
+
+  ALBPrivateListener1: 
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties: 
+      DefaultActions: 
+        - TargetGroupArn: !Ref ALBPrivateTargetGroup1
+          Type: forward
+      LoadBalancerArn: !Ref InternetALB2
+      Port: 80
+      Protocol: HTTP
+
+  ALBPrivateTargetGroup1: 
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties: 
+      VpcId: !Ref VPC
+      Name: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
+      Protocol: HTTP
+      Port: 8888
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckPort: "8888"
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher: 
+        HttpCode: 200
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
+      TargetGroupAttributes: 
+        - Key: "deregistration_delay.timeout_seconds"
+          Value: 300
+        - Key: "stickiness.enabled"
+          Value: false
+      Targets: 
+        - Id: !Ref VSCodeServer
+          Port: 8888
+
+######################################################################
+# Internal ALB for Private-only Access (ALB → EC2:8888)
+######################################################################
+  PrivateALB1: 
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties: 
+      Name: !Sub "${AWS::StackName}-PrivateALB1"
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-PrivateALB1"
+      Scheme: "internal"
+      LoadBalancerAttributes: 
+        - Key: "deletion_protection.enabled"
+          Value: false
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 60
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets: 
+        - Ref: PrivateSubnetA
+        - Ref: PrivateSubnetB
+      Type: application
+
+  ALBPrivateListener2: 
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties: 
+      LoadBalancerArn: !Ref PrivateALB1
+      Port: 80
+      Protocol: HTTP
+      DefaultActions: 
+        - Type: forward
+          TargetGroupArn: !Ref ALBPrivateTargetGroup2
+
+  ALBPrivateTargetGroup2: 
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties: 
+      VpcId: !Ref VPC
+      Name: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup2"
+      Protocol: HTTP
+      Port: 8888
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckPort: "8888"
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher: 
+        HttpCode: 200
+      Tags: 
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup2"
+      TargetGroupAttributes: 
+        - Key: "deregistration_delay.timeout_seconds"
+          Value: 300
+        - Key: "stickiness.enabled"
+          Value: false
+      Targets: 
+        - Id: !Ref VSCodeServer
+          Port: 8888
+
+######################################################################
+# EC2 보안 그룹 (8888 포트 ALB에서만 접근 허용)
+######################################################################
+  VSCodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow ALB to access port 8888
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8888
+          ToPort: 8888
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+  VSCodeEC2SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH, HTTP, and HTTPS access
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          CidrIp: 0.0.0.0/0
+          FromPort: -1
+          ToPort: -1
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8888
+          ToPort: 8888
+          CidrIp: 0.0.0.0/0
+############################################################################################
+############################################################################################
+# Create EndPoint                                ###########################################
+############################################################################################
+############################################################################################
+
+
+######################################################################
+# Create-System-Manager-Endpoint: Create VPC SystemManager Endpoint #
+######################################################################
+
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+      SubnetIds: 
+        - Ref: PrivateSubnetA
+        - Ref: PrivateSubnetB
+      SecurityGroupIds:
+        - Ref: SSMSG
+
+  SSMMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+      SubnetIds: 
+        - Ref: PrivateSubnetA
+        - Ref: PrivateSubnetB
+      SecurityGroupIds:
+        - Ref: SSMSG
+
+############################################################################################
+############################################################################################
+# Create EC2                                 ###############################################
+############################################################################################
+############################################################################################
+
+##############################################
+# Create-VSCode-EC2 #
+##############################################
+VSCodeServer:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType1
+      ImageId: !Ref AmazonLinux2023AmiId
+       IamInstanceProfile: !Ref InstanceProfileSSM
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          SubnetId: !Ref PublicSubnetA
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref VSCodeEC2SecurityGroup
+      # 루트 볼륨 크기 및 타입 설정 / Set root volume size and type
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 50  # 20GB
+            VolumeType: gp3
+      # EC2 인스턴스 초기화 스크립트 / EC2 instance initialization script
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash
+          # AWS CLI 최신 버전 설치 / Install the latest version of AWS CLI
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          # SSM 플러그인 설치 / Install SSM Plugin
+          sudo yum install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+          # 개발 도구 및 기타 필수 패키지 설치 / Install development tools and other necessary packages
+          yum update -y || dnf update -y
+          yum install -y git || dnf install -y git
+          yum groupinstall -y "Development Tools" || dnf groupinstall -y "Development Tools"
+          curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+          yum install -y nodejs || dnf install -y nodejs
+          # jq 설치 / Install jq
+          yum install -y jq || dnf install -y jq
+          # VS Code Server 설치 / Install VS Code Server
+          wget https://github.com/coder/code-server/releases/download/v4.96.4/code-server-4.96.4-linux-amd64.tar.gz
+          tar -xzf code-server-4.96.4-linux-amd64.tar.gz
+          mv code-server-4.96.4-linux-amd64 /usr/local/lib/code-server
+          ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+          # VS Code Server 설정 / Configure VS Code Server
+          mkdir -p /home/ec2-user/.config/code-server
+          cat <<EOF > /home/ec2-user/.config/code-server/config.yaml
+          bind-addr: 0.0.0.0:8888
+          auth: none
+          cert: false
+          EOF
+          chown -R ec2-user:ec2-user /home/ec2-user/.config
+          # VS Code Server 서비스 구성 / Configure VS Code Server service
+          cat <<EOF > /etc/systemd/system/code-server.service
+          [Unit]
+          Description=VS Code Server
+          After=network.target
+          [Service]
+          Type=simple
+          User=ec2-user
+          ExecStart=/usr/local/bin/code-server --config /home/ec2-user/.config/code-server/config.yaml
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          systemctl daemon-reload
+          systemctl enable code-server
+          systemctl start code-server
+      Tags:
+        - Key: Name
+          Value: EC2VSCodeServer
+
+###############
+# VPC Outputs #
+###############
+Outputs:
+  VPC:
+    Description: VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}"
+
+  AttachSubnetA:
+    Description: AttachSubnetA
+    Value: !Ref AttachSubnetA
+    Export:
+      Name: !Sub "${AWS::StackName}-AttachSubnetA"
+
+  AttachSubnetB:
+    Description: AttachSubnetB
+    Value: !Ref AttachSubnetB
+    Export:
+      Name: !Sub "${AWS::StackName}-AttachSubnetB"
+
+  PublicSubnetA:
+    Description: PublicSubnetA
+    Value: !Ref PublicSubnetA
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetA"
+
+  PublicSubnetB:
+    Description: PublicSubnetB
+    Value: !Ref PublicSubnetB
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetB"
+
+  PrivateSubnetABlock:
+    Description: PrivateSubnetA
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetA"
+
+  PrivateSubnetBBlock:
+    Description: PrivateSubnetB
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetB"
