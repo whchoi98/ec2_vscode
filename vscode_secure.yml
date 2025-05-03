@@ -650,7 +650,7 @@ Resources:
       Protocol: HTTP
 
 ######################################################################
-# Target Group for VSCode in Private Subnet (port 8080)
+# Target Group for VSCode in Private Subnet (port 8888)
 ######################################################################
   ALBPrivateTargetGroup1: 
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
@@ -658,10 +658,10 @@ Resources:
       VpcId: !Ref VPC
       Name: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
       Protocol: HTTP
-      Port: 8888  # VSCode Server listens on 8080
+      Port: 8888  # VSCode Server listens on 8888
       HealthCheckProtocol: HTTP
       HealthCheckPath: "/"
-      HealthCheckPort: "8080"
+      HealthCheckPort: "8888"
       HealthyThresholdCount: 3
       UnhealthyThresholdCount: 2
       HealthCheckTimeoutSeconds: 5
