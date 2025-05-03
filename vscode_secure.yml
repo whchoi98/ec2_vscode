@@ -844,7 +844,7 @@ Resources:
       ImageId: !Ref AmazonLinux2023AmiId
       IamInstanceProfile: !Ref InstanceProfileVSCode
       NetworkInterfaces:
-        - AssociatePublicIpAddress: true
+        - AssociatePublicIpAddress: false
           SubnetId: !Ref PrivateSubnetA
           PrivateIpAddress: 10.254.21.254
           DeviceIndex: 0
