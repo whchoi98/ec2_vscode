@@ -619,7 +619,7 @@ Resources:
 ######################################################################
 # Create Internet-facing ALB (InternetALB1) and Listener
 ######################################################################
-  InternetALB2: 
+  InternetALB1: 
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties: 
       Name: !Sub "${AWS::StackName}-InternetALB1"
