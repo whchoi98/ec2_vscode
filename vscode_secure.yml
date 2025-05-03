@@ -897,12 +897,12 @@ Resources:
 ##############################################
 # Create-VSCode-EC2 #
 ##############################################
-VSCodeServer:
+  VSCodeServer:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: !Ref InstanceType1
       ImageId: !Ref AmazonLinux2023AmiId
-      IamInstanceProfile: !Ref InstanceProfileSSM
+       IamInstanceProfile: !Ref InstanceProfileSSM
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           SubnetId: !Ref PublicSubnetA
