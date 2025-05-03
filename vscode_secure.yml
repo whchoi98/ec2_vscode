@@ -617,15 +617,15 @@ Resources:
 
 ## https://docs.aws.amazon.com/ko_kr/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
 ######################################################################
-# Create Internet-facing ALB (InternetALB2) and Listener
+# Create Internet-facing ALB (InternetALB1) and Listener
 ######################################################################
   InternetALB2: 
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties: 
-      Name: !Sub "${AWS::StackName}-InternetALB2"
+      Name: !Sub "${AWS::StackName}-InternetALB1"
       Tags: 
         - Key: Name
-          Value: !Sub "${AWS::StackName}-InternetALB2"
+          Value: !Sub "${AWS::StackName}-InternetALB1"
       Scheme: "internet-facing"
       LoadBalancerAttributes: 
         - Key: "deletion_protection.enabled"
@@ -645,7 +645,7 @@ Resources:
       DefaultActions: 
         - TargetGroupArn: !Ref ALBPrivateTargetGroup1
           Type: forward
-      LoadBalancerArn: !Ref InternetALB2
+      LoadBalancerArn: !Ref InternetALB1
       Port: 80
       Protocol: HTTP
 
@@ -693,67 +693,6 @@ Resources:
           FromPort: 8888
           ToPort: 8888
           SourceSecurityGroupId: !Ref ALBSecurityGroup
-
-######################################################################
-# Internet-facing ALB for Public Access (ALB → EC2:8080)
-######################################################################
-  InternetALB2: 
-    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
-    Properties: 
-      Name: !Sub "${AWS::StackName}-InternetALB2"
-      Tags: 
-        - Key: Name
-          Value: !Sub "${AWS::StackName}-InternetALB2"
-      Scheme: "internet-facing"
-      LoadBalancerAttributes: 
-        - Key: "deletion_protection.enabled"
-          Value: false
-        - Key: "idle_timeout.timeout_seconds"
-          Value: 60
-      SecurityGroups:
-        - !Ref ALBSecurityGroup
-      Subnets: 
-        - Ref: PublicSubnetA
-        - Ref: PublicSubnetB
-      Type: application 
-
-  ALBPrivateListener1: 
-    Type: "AWS::ElasticLoadBalancingV2::Listener"
-    Properties: 
-      DefaultActions: 
-        - TargetGroupArn: !Ref ALBPrivateTargetGroup1
-          Type: forward
-      LoadBalancerArn: !Ref InternetALB2
-      Port: 80
-      Protocol: HTTP
-
-  ALBPrivateTargetGroup1: 
-    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
-    Properties: 
-      VpcId: !Ref VPC
-      Name: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
-      Protocol: HTTP
-      Port: 8888
-      HealthCheckProtocol: HTTP
-      HealthCheckPath: "/"
-      HealthCheckPort: "8888"
-      HealthyThresholdCount: 3
-      UnhealthyThresholdCount: 2
-      HealthCheckTimeoutSeconds: 5
-      HealthCheckIntervalSeconds: 30
-      Matcher: 
-        HttpCode: 200
-      Tags: 
-        - Key: Name
-          Value: !Sub "${AWS::StackName}-ALB-PrivateTargetGroup1"
-      TargetGroupAttributes: 
-        - Key: "deregistration_delay.timeout_seconds"
-          Value: 300
-        - Key: "stickiness.enabled"
-          Value: false
-      Targets: 
-        - Id: !Ref VSCodeServer
-          Port: 8888
 
 ######################################################################
 # Internal ALB for Private-only Access (ALB → EC2:8888)
@@ -1016,9 +955,9 @@ Outputs:
 
   InternetALBDNSName:
     Description: DNS name of Internet-facing ALB
-    Value: !GetAtt InternetALB2.DNSName
+    Value: !GetAtt InternetALB1.DNSName
     Export:
-      Name: !Sub "${AWS::StackName}-InternetALB2-DNS"
+      Name: !Sub "${AWS::StackName}-InternetALB1-DNS"
 
   PrivateALBDNSName:
     Description: DNS name of Internal ALB
