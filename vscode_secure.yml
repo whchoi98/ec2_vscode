@@ -90,17 +90,17 @@ Parameters:
 
   InstanceType1:
     Type: String
-    Default: "m6.2xlarge"
+    Default: "m6i.2xlarge"
     Description: EC2 Instance Type for Basic EC2.
 
   InstanceType2:
     Type: String
-    Default: "m6.8xlarge"
+    Default: "m6i.8xlarge"
     Description: EC2 Instance Type for Mgmt EC2.
 
   InstanceType3:
     Type: String
-    Default: "c6.12xlarge"
+    Default: "c6i.12xlarge"
     Description: EC2 Instance Type for Performance EC2.
 
   AmazonLinux2023AmiId:
