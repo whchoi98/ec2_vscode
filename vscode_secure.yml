@@ -580,16 +580,17 @@ Resources:
 
 
 ##########################################
-# Create-EC2Role: Create EC2 ServerRole  #
+# Create-VSCode-EC2Role: Create EC2 ServerRole  #
 ##########################################
 
-  ServerRoleSSM:
+  ServerRoleVSCode:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${AWS::StackName}-SSMRole'
       Path: "/"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - "arn:aws:iam::aws:policy/AdministratorAccess"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -600,12 +601,12 @@ Resources:
             Action:
               - sts:AssumeRole
 
-  InstanceProfileSSM:
+  InstanceProfileVSCode:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: "/"
       Roles: 
-        - Ref: ServerRoleSSM
+        - Ref: ServerRoleVSCode
 
 
 ############################################################################################
@@ -902,10 +903,11 @@ Resources:
     Properties:
       InstanceType: !Ref InstanceType1
       ImageId: !Ref AmazonLinux2023AmiId
-      IamInstanceProfile: !Ref InstanceProfileSSM
+      IamInstanceProfile: !Ref InstanceProfileVSCode
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
-          SubnetId: !Ref PublicSubnetA
+          SubnetId: !Ref PrivateSubnetA
+          PrivateIpAddress: 10.254.21.254
           DeviceIndex: 0
           GroupSet:
             - !Ref VSCodeEC2SecurityGroup
