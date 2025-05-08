@@ -1,5 +1,5 @@
 
-# EC2 Code Server 배포 / EC2 Code Server Deployment / code server (version 4.96.2)
+# Option1 : Default VPC 에 EC2 Code Server 배포 / EC2 Code Server Deployment in a Default VPC / code server (version 4.96.2)
 
 이 리포지토리는 Default VPC에서 Amazon EC2 인스턴스에 VS Code 서버를 배포하는 AWS CloudFormation 템플릿을 포함하고 있습니다. 이 인스턴스는 AWS Systems Manager(SSM)를 지원하여 원격 관리가 가능하며, 개발에 필요한 도구들이 사전 설치되어 있습니다.
 
@@ -126,9 +126,10 @@ cat ~/ec2_vscode/vscode_pwd.sh
 
 For more details on the configuration and customization options, refer to the CloudFormation template in this repository.
 
+# Option 2 :  새로운 VPC에 EC2 Code Server 배포 / ALB on a Public Subnet + VSCode Server on a Private Subnet 조합 / Option 2: Deploy EC2 Code Server in a new VPC with an ALB on a Public Subnet and the VSCode Server on a Private Subnet. #
 ## 새로운 VPC에 설치하기 / Getting Started
 
-### 새로운 VPC 설치 
+### 새로운 VPC 설치 / Deploy New VPC
 
 ```
 aws cloudformation deploy \
@@ -140,3 +141,4 @@ aws cloudformation deploy \
 ### ALB로 접속합니다.
 ```
 
+```
