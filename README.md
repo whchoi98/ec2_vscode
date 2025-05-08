@@ -127,7 +127,6 @@ cat ~/ec2_vscode/vscode_pwd.sh
 For more details on the configuration and customization options, refer to the CloudFormation template in this repository.
 
 ## Option 2 :  새로운 VPC에 EC2 Code Server 배포 / ALB on a Public Subnet + VSCode Server on a Private Subnet 조합 ##
-## Option 2: Deploy EC2 Code Server in a new VPC with an ALB on a Public Subnet and the VSCode Server on a Private Subnet. ##
 
 ## 새로운 VPC에 설치하기 / Getting Started
 
