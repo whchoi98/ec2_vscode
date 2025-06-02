@@ -170,7 +170,7 @@ Resources:
 # Create-NATGW: Create VPC NATGateway and PublicSubnet Assign
 #############################################################
 
-  NatGatewayAEIP:
+  NatGatewayEIP:
     DependsOn:
     - AttachGateway
     Type: 'AWS::EC2::EIP'
@@ -178,43 +178,20 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-NATGW-A-EIP'
+          Value: !Sub '${AWS::StackName}-NATGW-EIP'
 
-  NatGatewayA:
+  NatGateway:
     DependsOn:
-    - NatGatewayAEIP
+    - NatGatewayEIP
     - PublicSubnetA
     - AttachGateway
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt 'NatGatewayAEIP.AllocationId'
+      AllocationId: !GetAtt 'NatGatewayEIP.AllocationId'
       SubnetId: !Ref PublicSubnetA
       Tags:
       - Key: Name
-        Value: !Sub '${AWS::StackName}-NATGW-A'
-
-  NatGatewayBEIP:
-    DependsOn:
-    - AttachGateway
-    Type: 'AWS::EC2::EIP'
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-NATGW-B-EIP'
-
-  NatGatewayB:
-    DependsOn:
-    - NatGatewayBEIP
-    - PublicSubnetB
-    - AttachGateway
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt 'NatGatewayBEIP.AllocationId'
-      SubnetId: !Ref PublicSubnetB
-      Tags:
-      - Key: Name
-        Value: !Sub '${AWS::StackName}-NATGW-B'
+        Value: !Sub '${AWS::StackName}-NATGW'
 ############################################################################################
 ############################################################################################
 # Create Subnets and RouteTables              ###############################################
@@ -339,22 +316,22 @@ Resources:
   PrivateSubnetARoute1:
     DependsOn:
     - AttachGateway
-    - NatGatewayA
+    - NatGateway
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateSubnetARouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayA
+      NatGatewayId: !Ref NatGateway
 
   PrivateSubnetBRoute1:
     DependsOn:
     - AttachGateway
-    - NatGatewayB
+    - NatGateway
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateSubnetBRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayB
+      NatGatewayId: !Ref NatGateway
 
 
 ################################################################################################
@@ -422,22 +399,22 @@ Resources:
   AttachSubnetARoute1:
     DependsOn:
     - AttachGateway
-    - NatGatewayA
+    - NatGateway
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref AttachSubnetARouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayA
+      NatGatewayId: !Ref NatGateway
 
   AttachSubnetBRoute1:
     DependsOn:
     - AttachGateway
-    - NatGatewayA
+    - NatGateway
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref AttachSubnetBRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayA
+      NatGatewayId: !Ref NatGateway
       
       
 ################################################################################################
