@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2'
+Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2 (Custom Header Protection)'
 
 Metadata:
   "AWS::CloudFormation::Interface":
@@ -33,17 +33,17 @@ Parameters:
 
   VPCCIDRBlock:
     Type: String
-    Default: "10.254.0.0/16"
+    Default: "[IP_ADDRESS]"
     Description: "CIDR range for the VPC"
 
   PublicSubnetABlock:
     Type: String
-    Default: "10.254.11.0/24"
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for public subnet A (fixed)"
 
   PublicSubnetBBlock:
     Type: String
-    Default: "10.254.12.0/24"
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for public subnet B"
 
   PrivateSubnetABlock:
@@ -53,7 +53,7 @@ Parameters:
 
   PrivateSubnetBBlock:
     Type: String
-    Default: "10.254.22.0/24"
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for private subnet B"
 
   InstanceType:
@@ -156,7 +156,7 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
+      DestinationCidrBlock: [IP_ADDRESS]
       GatewayId: !Ref InternetGateway
 
   PublicSubnetARouteTableAssociation:
@@ -214,14 +214,14 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableA
-      DestinationCidrBlock: 0.0.0.0/0
+      DestinationCidrBlock: [IP_ADDRESS]
       NatGatewayId: !Ref NatGateway
 
   PrivateRouteB:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableB
-      DestinationCidrBlock: 0.0.0.0/0
+      DestinationCidrBlock: [IP_ADDRESS]
       NatGatewayId: !Ref NatGateway
 
   PrivateSubnetARouteTableAssociation:
@@ -240,20 +240,15 @@ Resources:
   PublicALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Security group for Internet-facing ALB - allows CloudFront only"
+      GroupDescription: "Security group for Internet-facing ALB - protected by custom header"
       GroupName: !Sub '${AWS::StackName}-Public-ALB-SG'
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourcePrefixListId: pl-22a6434b
-          Description: "HTTP from CloudFront (ap-northeast-2)"
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourcePrefixListId: pl-22a6434b
-          Description: "HTTPS from CloudFront (ap-northeast-2)"
+          CidrIp: [IP_ADDRESS]
+          Description: "HTTP from Internet (protected by custom header validation)"
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-Public-ALB-SG'
@@ -515,6 +510,24 @@ Resources:
       Protocol: HTTP
       Port: 80
       DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: 403
+            ContentType: text/plain
+            MessageBody: Access Denied
+
+  PublicALBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref PublicALBListener
+      Priority: 1
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Custom-Secret
+            Values:
+              - !Sub '${AWS::StackName}-secret-${AWS::AccountId}'
+      Actions:
         - Type: forward
           TargetGroupArn: !Ref PublicALBTargetGroup
 
@@ -533,6 +546,9 @@ Resources:
               OriginProtocolPolicy: http-only
               OriginReadTimeout: 60
               OriginKeepaliveTimeout: 5
+            OriginCustomHeaders:
+              - HeaderName: X-Custom-Secret
+                HeaderValue: !Sub '${AWS::StackName}-secret-${AWS::AccountId}'
         DefaultCacheBehavior:
           TargetOriginId: PublicALBOrigin
           ViewerProtocolPolicy: redirect-to-https
@@ -581,7 +597,7 @@ Outputs:
       Name: !Sub "${AWS::StackName}-CloudFront-URL"
 
   PublicALBEndpoint:
-    Description: Public ALB DNS Name (accessible from internet)
+    Description: Public ALB DNS Name (Direct access will be denied - use CloudFront URL)
     Value: !Sub "http://${PublicALB.DNSName}"
     Export:
       Name: !Sub "${AWS::StackName}-Public-ALB-DNS"
@@ -602,14 +618,20 @@ Outputs:
     Description: Public Subnet A CIDR (configured via parameter)
     Value: !Ref PublicSubnetABlock
 
+  CustomHeaderSecret:
+    Description: Custom header secret used for CloudFront validation
+    Value: !Sub '${AWS::StackName}-secret-${AWS::AccountId}'
+
   AccessInstructions:
     Description: How to access VSCode Server
     Value: !Sub |
-      1. Primary Access: https://${CloudFrontDistribution.DomainName}
-      2. Direct ALB Access: http://${PublicALB.DNSName}
+      1. Primary Access (ONLY): https://${CloudFrontDistribution.DomainName}
+      2. Direct ALB Access: BLOCKED (403 Forbidden without custom header)
       3. Direct EC2 (SSM): aws ssm start-session --target ${VSCodeServer}
       4. Password: Use the password provided during stack creation
+      
+      Security: ALB only accepts requests with custom header from CloudFront
 
   Architecture:
     Description: Network Architecture
-    Value: "CloudFront (HTTPS) -> Internet-facing ALB (HTTP:80) -> EC2 (HTTP:8888)"
+    Value: "CloudFront (HTTPS + Custom Header) -> Internet-facing ALB (HTTP:80 + Header Validation) -> EC2 (HTTP:8888)"
