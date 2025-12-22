@@ -162,7 +162,7 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: "[IP_ADDRESS]"
+      DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
   PublicSubnetARouteTableAssociation:
@@ -220,14 +220,14 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableA
-      DestinationCidrBlock: "[IP_ADDRESS]"
+      DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
   PrivateRouteB:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableB
-      DestinationCidrBlock: "[IP_ADDRESS]"
+      DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
   PrivateSubnetARouteTableAssociation:
@@ -419,7 +419,7 @@ Resources:
           # Configure code-server
           mkdir -p /home/ec2-user/.config/code-server
           cat > /home/ec2-user/.config/code-server/config.yaml <<EOF
-          bind-addr: [IP_ADDRESS]
+          bind-addr: 0.0.0.0:8888
           auth: password
           password: ${VSCodePassword}
           cert: false
