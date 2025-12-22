@@ -54,7 +54,7 @@ Parameters:
 
   PrivateSubnetBBlock:
     Type: String
-    Default: "10.254.21.0/24"
+    Default: "10.254.22.0/24"
     Description: "CIDR for private subnet B"
 
   InstanceType:
