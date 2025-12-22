@@ -1,3 +1,5 @@
+```yaml
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Secure VSCode Server with CloudFront -> Internal ALB -> Private EC2'
 
@@ -49,7 +51,7 @@ Parameters:
 
   PrivateSubnetABlock:
     Type: String
-    Default: "10.254.21.0/24"
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for private subnet A"
 
   PrivateSubnetBBlock:
@@ -162,7 +164,7 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: [IP_ADDRESS]
+      DestinationCidrBlock: "[IP_ADDRESS]"
       GatewayId: !Ref InternetGateway
 
   PublicSubnetARouteTableAssociation:
@@ -220,14 +222,14 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableA
-      DestinationCidrBlock: [IP_ADDRESS]
+      DestinationCidrBlock: "[IP_ADDRESS]"
       NatGatewayId: !Ref NatGateway
 
   PrivateRouteB:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableB
-      DestinationCidrBlock: [IP_ADDRESS]
+      DestinationCidrBlock: "[IP_ADDRESS]"
       NatGatewayId: !Ref NatGateway
 
   PrivateSubnetARouteTableAssociation:
@@ -361,67 +363,6 @@ Resources:
       Roles:
         - !Ref VSCodeServerRole
 
-  # Internal Application Load Balancer
-  InternalALB:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Sub "${AWS::StackName}-Internal-ALB"
-      Type: application
-      Scheme: internal
-      IpAddressType: ipv4
-      Subnets:
-        - !Ref PrivateSubnetA
-        - !Ref PrivateSubnetB
-      SecurityGroups:
-        - !Ref InternalALBSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-Internal-ALB'
-
-  InternalALBTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: !Sub "${AWS::StackName}-Internal-TG"
-      VpcId: !Ref VPC
-      Protocol: HTTP
-      Port: 8888
-      TargetType: instance
-      HealthCheckEnabled: true
-      HealthCheckProtocol: HTTP
-      HealthCheckPath: /healthz
-      HealthCheckPort: 8888
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 3
-      Matcher:
-        HttpCode: 200,302
-      Targets:
-        - Id: !Ref VSCodeServer
-          Port: 8888
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: 30
-        - Key: stickiness.enabled
-          Value: true
-        - Key: stickiness.type
-          Value: lb_cookie
-        - Key: stickiness.lb_cookie.duration_seconds
-          Value: 86400
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-Internal-TG'
-
-  InternalALBListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref InternalALB
-      Protocol: HTTP
-      Port: 80
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref InternalALBTargetGroup
-
   # VSCode Server EC2 Instance
   VSCodeServer:
     Type: AWS::EC2::Instance
@@ -523,27 +464,69 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-VSCode-Server'
 
-  # VPC Link for API Gateway
-  VPCLink:
-    Type: AWS::ApiGatewayV2::VpcLink
+  # Internal Application Load Balancer
+  InternalALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub "${AWS::StackName}-VPCLink"
-      SubnetIds:
+      Name: !Sub "${AWS::StackName}-Internal-ALB"
+      Type: application
+      Scheme: internal
+      IpAddressType: ipv4
+      Subnets:
         - !Ref PrivateSubnetA
         - !Ref PrivateSubnetB
-      SecurityGroupIds:
+      SecurityGroups:
         - !Ref InternalALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Internal-ALB'
+
+  InternalALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: VSCodeServer
+    Properties:
+      Name: !Sub "${AWS::StackName}-Internal-TG"
+      VpcId: !Ref VPC
+      Protocol: HTTP
+      Port: 8888
+      TargetType: instance
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /healthz
+      HealthCheckPort: 8888
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200,302
+      Targets:
+        - Id: !Ref VSCodeServer
+          Port: 8888
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 86400
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Internal-TG'
+
+  InternalALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref InternalALB
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref InternalALBTargetGroup
 
   # CloudFront Distribution
-  CloudFrontOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: !Sub "${AWS::StackName}-OAC"
-        OriginAccessControlOriginType: custom
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -623,12 +606,6 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-Private-IP"
 
-  VPCLinkId:
-    Description: VPC Link ID for API Gateway integration
-    Value: !Ref VPCLink
-    Export:
-      Name: !Sub "${AWS::StackName}-VPCLink-ID"
-
   PublicSubnetACIDR:
     Description: Public Subnet A CIDR (configured via parameter)
     Value: !Ref PublicSubnetABlock
@@ -644,3 +621,4 @@ Outputs:
   Architecture:
     Description: Network Architecture
     Value: "CloudFront (HTTPS) -> Internal ALB (HTTP:80) -> EC2 (HTTP:8888)"
+
