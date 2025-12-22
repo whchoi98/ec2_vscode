@@ -1,5 +1,3 @@
-```yaml
-
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Secure VSCode Server with CloudFront -> Internal ALB -> Private EC2'
 
@@ -621,4 +619,3 @@ Outputs:
   Architecture:
     Description: Network Architecture
     Value: "CloudFront (HTTPS) -> Internal ALB (HTTP:80) -> EC2 (HTTP:8888)"
-
