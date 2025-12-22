@@ -613,5 +613,3 @@ Outputs:
   Architecture:
     Description: Network Architecture
     Value: "CloudFront (HTTPS) -> Internet-facing ALB (HTTP:80) -> EC2 (HTTP:8888)"
-
-`
