@@ -33,17 +33,17 @@ Parameters:
 
   VPCCIDRBlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.0.0/16"
     Description: "CIDR range for the VPC"
 
   PublicSubnetABlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.11.0/24"
     Description: "CIDR for public subnet A (fixed)"
 
   PublicSubnetBBlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.12.0/24"
     Description: "CIDR for public subnet B"
 
   PrivateSubnetABlock:
@@ -53,7 +53,7 @@ Parameters:
 
   PrivateSubnetBBlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.22.0/24"
     Description: "CIDR for private subnet B"
 
   InstanceType:
@@ -156,7 +156,7 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: [IP_ADDRESS]
+      DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
   PublicSubnetARouteTableAssociation:
@@ -214,14 +214,14 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableA
-      DestinationCidrBlock: [IP_ADDRESS]
+      DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
   PrivateRouteB:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTableB
-      DestinationCidrBlock: [IP_ADDRESS]
+      DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
   PrivateSubnetARouteTableAssociation:
@@ -247,7 +247,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: [IP_ADDRESS]
+          CidrIp: 0.0.0.0/0
           Description: "HTTP from Internet (protected by custom header validation)"
       Tags:
         - Key: Name
