@@ -34,27 +34,27 @@ Parameters:
 
   VPCCIDRBlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.0.0/16"
     Description: "CIDR range for the VPC"
 
   PublicSubnetABlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.11.0/24"
     Description: "CIDR for public subnet A (fixed)"
 
   PublicSubnetBBlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.12.0/24"
     Description: "CIDR for public subnet B"
 
   PrivateSubnetABlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.21.0/24"
     Description: "CIDR for private subnet A"
 
   PrivateSubnetBBlock:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.21.0/24"
     Description: "CIDR for private subnet B"
 
   InstanceType:
@@ -75,7 +75,7 @@ Parameters:
 
   AllowedCIDR:
     Type: String
-    Default: "[IP_ADDRESS]"
+    Default: "10.254.0.0/16"
     Description: "CIDR block allowed to access via CloudFront"
 
   AmazonLinux2023AmiId:
