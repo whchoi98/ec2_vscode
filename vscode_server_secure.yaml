@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Secure VSCode Server with CloudFront -> Internal ALB -> Private EC2'
+Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2'
 
 Metadata:
   "AWS::CloudFormation::Interface":
@@ -19,7 +19,6 @@ Metadata:
         Parameters:
          - InstanceType
          - VSCodePassword
-         - AllowedCIDR
 
 Parameters:
   AvailabilityZoneA:
@@ -72,11 +71,6 @@ Parameters:
     NoEcho: true
     MinLength: 12
     Description: "Password for VSCode Server (minimum 12 characters)"
-
-  AllowedCIDR:
-    Type: String
-    Default: "10.254.0.0/16"
-    Description: "CIDR block allowed to access via CloudFront"
 
   AmazonLinux2023AmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
@@ -243,26 +237,26 @@ Resources:
       RouteTableId: !Ref PrivateRouteTableB
 
   # Security Groups
-  InternalALBSecurityGroup:
+  PublicALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Security group for Internal ALB"
-      GroupName: !Sub '${AWS::StackName}-Internal-ALB-SG'
+      GroupDescription: "Security group for Internet-facing ALB - allows CloudFront only"
+      GroupName: !Sub '${AWS::StackName}-Public-ALB-SG'
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: !Ref VPCCIDRBlock
-          Description: "HTTP from VPC"
+          SourcePrefixListId: pl-22a6434b
+          Description: "HTTP from CloudFront (ap-northeast-2)"
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: !Ref VPCCIDRBlock
-          Description: "HTTPS from VPC"
+          SourcePrefixListId: pl-22a6434b
+          Description: "HTTPS from CloudFront (ap-northeast-2)"
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Internal-ALB-SG'
+          Value: !Sub '${AWS::StackName}-Public-ALB-SG'
 
   VSCodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -274,8 +268,8 @@ Resources:
         - IpProtocol: tcp
           FromPort: 8888
           ToPort: 8888
-          SourceSecurityGroupId: !Ref InternalALBSecurityGroup
-          Description: "VSCode port from Internal ALB only"
+          SourceSecurityGroupId: !Ref PublicALBSecurityGroup
+          Description: "VSCode port from Public ALB only"
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-VSCode-SG'
@@ -462,28 +456,28 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-VSCode-Server'
 
-  # Internal Application Load Balancer
-  InternalALB:
+  # Internet-facing Application Load Balancer
+  PublicALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub "${AWS::StackName}-Internal-ALB"
+      Name: !Sub "${AWS::StackName}-Public-ALB"
       Type: application
-      Scheme: internal
+      Scheme: internet-facing
       IpAddressType: ipv4
       Subnets:
-        - !Ref PrivateSubnetA
-        - !Ref PrivateSubnetB
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
       SecurityGroups:
-        - !Ref InternalALBSecurityGroup
+        - !Ref PublicALBSecurityGroup
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Internal-ALB'
+          Value: !Sub '${AWS::StackName}-Public-ALB'
 
-  InternalALBTargetGroup:
+  PublicALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: VSCodeServer
     Properties:
-      Name: !Sub "${AWS::StackName}-Internal-TG"
+      Name: !Sub "${AWS::StackName}-Public-TG"
       VpcId: !Ref VPC
       Protocol: HTTP
       Port: 8888
@@ -512,17 +506,17 @@ Resources:
           Value: 86400
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Internal-TG'
+          Value: !Sub '${AWS::StackName}-Public-TG'
 
-  InternalALBListener:
+  PublicALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      LoadBalancerArn: !Ref InternalALB
+      LoadBalancerArn: !Ref PublicALB
       Protocol: HTTP
       Port: 80
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref InternalALBTargetGroup
+          TargetGroupArn: !Ref PublicALBTargetGroup
 
   # CloudFront Distribution
   CloudFrontDistribution:
@@ -532,15 +526,15 @@ Resources:
         Enabled: true
         Comment: !Sub "VSCode Server distribution for ${AWS::StackName}"
         Origins:
-          - Id: InternalALBOrigin
-            DomainName: !GetAtt InternalALB.DNSName
+          - Id: PublicALBOrigin
+            DomainName: !GetAtt PublicALB.DNSName
             CustomOriginConfig:
               HTTPPort: 80
               OriginProtocolPolicy: http-only
               OriginReadTimeout: 60
               OriginKeepaliveTimeout: 5
         DefaultCacheBehavior:
-          TargetOriginId: InternalALBOrigin
+          TargetOriginId: PublicALBOrigin
           ViewerProtocolPolicy: redirect-to-https
           AllowedMethods:
             - GET
@@ -586,11 +580,11 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-CloudFront-URL"
 
-  InternalALBEndpoint:
-    Description: Internal ALB DNS Name (accessible only from within VPC)
-    Value: !Sub "http://${InternalALB.DNSName}"
+  PublicALBEndpoint:
+    Description: Public ALB DNS Name (accessible from internet)
+    Value: !Sub "http://${PublicALB.DNSName}"
     Export:
-      Name: !Sub "${AWS::StackName}-Internal-ALB-DNS"
+      Name: !Sub "${AWS::StackName}-Public-ALB-DNS"
 
   VSCodeServerInstanceId:
     Description: VSCode Server EC2 Instance ID
@@ -612,10 +606,12 @@ Outputs:
     Description: How to access VSCode Server
     Value: !Sub |
       1. Primary Access: https://${CloudFrontDistribution.DomainName}
-      2. Internal Access (VPN/Midway): http://${InternalALB.DNSName}
+      2. Direct ALB Access: http://${PublicALB.DNSName}
       3. Direct EC2 (SSM): aws ssm start-session --target ${VSCodeServer}
       4. Password: Use the password provided during stack creation
 
   Architecture:
     Description: Network Architecture
-    Value: "CloudFront (HTTPS) -> Internal ALB (HTTP:80) -> EC2 (HTTP:8888)"
+    Value: "CloudFront (HTTPS) -> Internet-facing ALB (HTTP:80) -> EC2 (HTTP:8888)"
+
+`
