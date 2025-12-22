@@ -25,41 +25,41 @@ Parameters:
   AvailabilityZoneA:
     Description: "Choose AZ1 for your VPC"
     Type: AWS::EC2::AvailabilityZone::Name
-    Default: "ap-northeast-2a"
+    Default: ap-northeast-2a
     
   AvailabilityZoneB:
     Description: "Choose AZ2 for your VPC"
     Type: AWS::EC2::AvailabilityZone::Name
-    Default: "ap-northeast-2b"
+    Default: ap-northeast-2b
 
   VPCCIDRBlock:
     Type: String
-    Default: 10.254.0.0/16
+    Default: "[IP_ADDRESS]"
     Description: "CIDR range for the VPC"
 
   PublicSubnetABlock:
     Type: String
-    Default: 10.254.11.0/24
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for public subnet A (fixed)"
 
   PublicSubnetBBlock:
     Type: String
-    Default: 10.254.12.0/24
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for public subnet B"
 
   PrivateSubnetABlock:
     Type: String
-    Default: 10.254.21.0/24
+    Default: "10.254.21.0/24"
     Description: "CIDR for private subnet A"
 
   PrivateSubnetBBlock:
     Type: String
-    Default: 10.254.22.0/24
+    Default: "[IP_ADDRESS]"
     Description: "CIDR for private subnet B"
 
   InstanceType:
     Type: String
-    Default: "m6i.2xlarge"
+    Default: m6i.2xlarge
     Description: "EC2 Instance Type for VSCode Server"
     AllowedValues:
       - t3.medium
@@ -79,8 +79,8 @@ Parameters:
     Description: "CIDR block allowed to access via CloudFront"
 
   AmazonLinux2023AmiId:
-    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
-    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
 
 Resources:
   # VPC Configuration
@@ -396,6 +396,9 @@ Resources:
       UnhealthyThresholdCount: 3
       Matcher:
         HttpCode: 200,302
+      Targets:
+        - Id: !Ref VSCodeServer
+          Port: 8888
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: 30
@@ -520,14 +523,6 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-VSCode-Server'
 
-  # Register EC2 to Target Group
-  TargetGroupAttachment:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
-    Properties:
-      TargetGroupArn: !Ref InternalALBTargetGroup
-      TargetId: !Ref VSCodeServer
-      Port: 8888
-
   # VPC Link for API Gateway
   VPCLink:
     Type: AWS::ApiGatewayV2::VpcLink
@@ -649,4 +644,3 @@ Outputs:
   Architecture:
     Description: Network Architecture
     Value: "CloudFront (HTTPS) -> Internal ALB (HTTP:80) -> EC2 (HTTP:8888)"
-
