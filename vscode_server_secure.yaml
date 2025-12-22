@@ -1,3 +1,4 @@
+```yaml
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Secure VSCode Server with CloudFront -> Internal ALB -> Private EC2'
@@ -41,11 +42,11 @@ Parameters:
   PublicSubnetABlock:
     Type: String
     Default: 10.254.11.0/24
-    Description: "CIDR for public subnet A"
+    Description: "CIDR for public subnet A (fixed)"
 
   PublicSubnetBBlock:
     Type: String
-    Default: 10.254.12.0/24
+    Default: [IP_ADDRESS]
     Description: "CIDR for public subnet B"
 
   PrivateSubnetABlock:
@@ -127,7 +128,7 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-NATGW'
 
-  # Public Subnets (for NAT Gateway only)
+  # Public Subnets
   PublicSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -178,7 +179,7 @@ Resources:
       SubnetId: !Ref PublicSubnetB
       RouteTableId: !Ref PublicRouteTable
 
-  # Private Subnets (for Internal ALB and EC2)
+  # Private Subnets
   PrivateSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -247,7 +248,7 @@ Resources:
   InternalALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Security group for Internal ALB - allows CloudFront prefix list"
+      GroupDescription: "Security group for Internal ALB"
       GroupName: !Sub '${AWS::StackName}-Internal-ALB-SG'
       VpcId: !Ref VPC
       SecurityGroupIngress:
@@ -529,7 +530,7 @@ Resources:
       TargetId: !Ref VSCodeServer
       Port: 8888
 
-  # VPC Link for API Gateway (optional - for future API Gateway integration)
+  # VPC Link for API Gateway
   VPCLink:
     Type: AWS::ApiGatewayV2::VpcLink
     Properties:
@@ -540,7 +541,7 @@ Resources:
       SecurityGroupIds:
         - !Ref InternalALBSecurityGroup
 
-  # CloudFront Distribution with Custom Origin (Internal ALB)
+  # CloudFront Distribution
   CloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
@@ -555,7 +556,7 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: !Sub "VSCode Server distribution for ${AWS::StackName} - CloudFront to Internal ALB"
+        Comment: !Sub "VSCode Server distribution for ${AWS::StackName}"
         Origins:
           - Id: InternalALBOrigin
             DomainName: !GetAtt InternalALB.DNSName
@@ -646,7 +647,7 @@ Outputs:
       2. Internal Access (VPN/Midway): http://${InternalALB.DNSName}
       3. Direct EC2 (SSM): aws ssm start-session --target ${VSCodeServer}
       4. Password: Use the password provided during stack creation
-      
+
   Architecture:
     Description: Network Architecture
-    Value: "CloudFront (HTTPS) -> Internal ALB (HTTP:80) -> EC2 (HTTP:
+    Value: "CloudFront (HTTPS) -> Internal ALB (HTTP:80) -> EC2 (HTTP:88
