@@ -34,7 +34,7 @@ Parameters:
 
   VPCCIDRBlock:
     Type: String
-    Default: [IP_ADDRESS]
+    Default: 10.254.0.0/16
     Description: "CIDR range for the VPC"
 
   PublicSubnetABlock:
@@ -44,7 +44,7 @@ Parameters:
 
   PublicSubnetBBlock:
     Type: String
-    Default: [IP_ADDRESS]
+    Default: 10.254.12.0/24
     Description: "CIDR for public subnet B"
 
   PrivateSubnetABlock:
