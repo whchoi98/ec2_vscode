@@ -459,6 +459,9 @@ Resources:
       Type: application
       Scheme: internet-facing
       IpAddressType: ipv4
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: 3600
       Subnets:
         - !Ref PublicSubnetA
         - !Ref PublicSubnetB
@@ -479,12 +482,13 @@ Resources:
       TargetType: instance
       HealthCheckEnabled: true
       HealthCheckProtocol: HTTP
-      HealthCheckPath: /healthz
+      HealthCheckPath: "/"
       HealthCheckPort: 8888
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
+      HealthCheckProtocol: HTTP
       Matcher:
         HttpCode: 200,302
       Targets:
