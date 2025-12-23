@@ -39,7 +39,7 @@ Parameters:
   PublicSubnetABlock:
     Type: String
     Default: "10.254.11.0/24"
-    Description: "CIDR for public subnet A (fixed)"
+    Description: "CIDR for public subnet A"
 
   PublicSubnetBBlock:
     Type: String
