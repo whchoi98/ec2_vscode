@@ -21,6 +21,10 @@ Metadata:
          - VSCodePassword
 
 Parameters:
+  CloudFrontPrefixListId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/global-infrastructure/services/cloudfront/origin-facing/prefix-list-id
+    Description: CloudFront origin-facing managed prefix list ID  
   AvailabilityZoneA:
     Description: "Choose AZ1 for your VPC"
     Type: AWS::EC2::AvailabilityZone::Name
@@ -240,15 +244,15 @@ Resources:
   PublicALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Security group for Internet-facing ALB - protected by custom header"
+      GroupDescription: "Security group for Internet-facing ALB - HTTP from CloudFront origin-facing only"
       GroupName: !Sub '${AWS::StackName}-Public-ALB-SG'
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
-          Description: "HTTP from Internet (protected by custom header validation)"
+          SourcePrefixListId: !Ref CloudFrontPrefixListId
+          Description: "HTTP from CloudFront origin-facing only"
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-Public-ALB-SG'
