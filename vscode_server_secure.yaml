@@ -22,9 +22,8 @@ Metadata:
 
 Parameters:
   CloudFrontPrefixListId:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /aws/service/global-infrastructure/services/cloudfront/origin-facing/prefix-list-id
-    Description: CloudFront origin-facing managed prefix list ID  
+    Type: String
+    Description: CloudFront origin-facing managed prefix list ID
   AvailabilityZoneA:
     Description: "Choose AZ1 for your VPC"
     Type: AWS::EC2::AvailabilityZone::Name
