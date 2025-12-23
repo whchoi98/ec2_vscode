@@ -636,10 +636,10 @@ Outputs:
       1. Primary Access (ONLY): https://${CloudFrontDistribution.DomainName}
       2. Direct ALB Access: BLOCKED (403 Forbidden without custom header)
       3. Direct EC2 (SSM): aws ssm start-session --target ${VSCodeServer}
-      4. Password: Use the password provided during stack creation
+      4. Password: Use the password provided during stack creation 
       
-      Security: ALB only accepts requests with custom header from CloudFront
+      Security: ALB only accepts requests from CloudFront origin-facing only
 
   Architecture:
     Description: Network Architecture
-    Value: "CloudFront (HTTPS + Custom Header) -> Internet-facing ALB (HTTP:80 + Header Validation) -> EC2 (HTTP:8888)"
+    Value: "CloudFront (HTTPS + CloudFront Prefix List) -> Internet-facing ALB (HTTP:80 + SG Reference) -> EC2 (HTTP:8888)"
