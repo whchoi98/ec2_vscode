@@ -373,7 +373,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -e
+          set -euxo pipefail
           
           # System update
           dnf update -y
@@ -382,10 +382,10 @@ Resources:
           dnf install -y git jq wget tar gzip
           
           # Install development tools
-          dnf groupinstall -y "Development Tools"
+          dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools install failed"
           
           # Install Node.js 20
-          curl -sL https://rpm.nodesource.com/setup_20.x | bash -
+          curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - || echo "[WARN] NodeSource setup failed"
           dnf install -y nodejs
           
           # Install AWS CLI v2
