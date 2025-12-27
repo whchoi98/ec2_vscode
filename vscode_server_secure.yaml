@@ -61,19 +61,28 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: m6i.2xlarge
+    Default: m8i.2xlarge
     Description: "EC2 Instance Type for VSCode Server"
     AllowedValues:
-      - t3.medium
+      - t4g.xlarge
+      - t4g.2xlarge
       - t3.large
-      - m6i.xlarge
-      - m6i.2xlarge
+      - t3.xlarge
+      - t3.2xlarge
+      - m8g.xlarge
+      - m8g.2xlarge
+      - m8i.xlarge
+      - m8i.2xlarge
+      - m7g.xlarge
+      - m7g.2xlarge
+      - m7i.xlarge
+      - m7i.2xlarge
 
   VSCodePassword:
     Type: String
     NoEcho: true
-    MinLength: 12
-    Description: "Password for VSCode Server (minimum 12 characters)"
+    MinLength: 8
+    Description: "Password for VSCode Server (minimum 8 characters)"
 
   AmazonLinux2023AmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
@@ -362,6 +371,7 @@ Resources:
       - EC2MessagesEndpoint
     Properties:
       InstanceType: !Ref InstanceType
+      PrivateIpAddress: 10.254.21.101
       ImageId: !Ref AmazonLinux2023AmiId
       IamInstanceProfile: !Ref VSCodeInstanceProfile
       SubnetId: !Ref PrivateSubnetA
@@ -370,7 +380,7 @@ Resources:
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
-            VolumeSize: 50
+            VolumeSize: 100
             VolumeType: gp3
             Encrypted: true
       UserData:
@@ -400,7 +410,7 @@ Resources:
           # Install SSM Plugin
           dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
           
-          # Install code-server
+          # Install code-server v4.106.3
           cd /tmp
           wget https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-amd64.tar.gz
           tar -xzf code-server-4.106.3-linux-amd64.tar.gz
@@ -633,7 +643,7 @@ Outputs:
     Description: How to access VSCode Server
     Value: !Sub |
       1. Primary Access (ONLY): https://${CloudFrontDistribution.DomainName}
-      2. Direct ALB Access: BLOCKED (403 Forbidden without custom header)
+      2. Direct ALB Access: BLOCKED (403 Forbidden without CloudFront Prefix List)
       3. Direct EC2 (SSM): aws ssm start-session --target ${VSCodeServer}
       4. Password: Use the password provided during stack creation 
       
@@ -641,4 +651,4 @@ Outputs:
 
   Architecture:
     Description: Network Architecture
-    Value: "CloudFront (HTTPS + CloudFront Prefix List) -> Internet-facing ALB (HTTP:80 + SG Reference) -> EC2 (HTTP:8888)"
+    Value: "CloudFront (HTTPS + CloudFront Prefix List) -> Internet-facing ALB (HTTP:80 + SG Reference) -> VSCode SVR on EC2 (HTTP:8888)"
