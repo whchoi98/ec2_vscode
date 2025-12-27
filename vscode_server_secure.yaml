@@ -61,7 +61,7 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: m8i.2xlarge
+    Default: m7i.2xlarge
     Description: "EC2 Instance Type for VSCode Server"
     AllowedValues:
       - t4g.xlarge
@@ -69,10 +69,6 @@ Parameters:
       - t3.large
       - t3.xlarge
       - t3.2xlarge
-      - m8g.xlarge
-      - m8g.2xlarge
-      - m8i.xlarge
-      - m8i.2xlarge
       - m7g.xlarge
       - m7g.2xlarge
       - m7i.xlarge
