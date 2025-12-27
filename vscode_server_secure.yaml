@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2 (Custom Header Protection)'
+Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2'
 
 Metadata:
   "AWS::CloudFormation::Interface":
