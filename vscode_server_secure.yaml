@@ -392,7 +392,7 @@ Resources:
           dnf update -y
           
           # Install required packages
-          dnf install -y git jq wget tar gzip
+          dnf install -y git jq wget tar gzip unzip curl python3 python3-pip
           
           # Install development tools
           dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools install failed"
@@ -409,6 +409,15 @@ Resources:
           
           # Install SSM Plugin
           dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
+          
+          # Install uv package manager
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          
+          # Install kiro-cli
+          curl -L "https://github.com/aws/kiro-cli/releases/latest/download/kiro-cli-linux-x86_64.tar.gz" -o kiro-cli.tar.gz
+          tar -xzf kiro-cli.tar.gz -C /usr/local/bin/
+          chmod +x /usr/local/bin/kiro-cli*
+          rm kiro-cli.tar.gz
           
           # Install code-server v4.106.3
           cd /tmp
@@ -447,6 +456,15 @@ Resources:
           [Install]
           WantedBy=multi-user.target
           EOF
+          
+          # Install Claude Code
+          curl -L "https://github.com/anthropics/claude-code/releases/latest/download/claude-code-linux-x86_64.tar.gz" -o claude-code.tar.gz
+          tar -xzf claude-code.tar.gz -C /usr/local/bin/
+          chmod +x /usr/local/bin/claude-code
+          rm claude-code.tar.gz
+          
+          # Install Claude Code extension
+          sudo -u ec2-user /usr/local/bin/code-server --install-extension anthropic.claude-code
           
           # Enable and start service
           systemctl daemon-reload
