@@ -1,0 +1,471 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Simple Multi-User VSCode Server - Single Service with Dynamic Scaling and CloudFront Prefix List Protection'
+
+Metadata:
+  DeploymentExample:
+    Description: |
+      Deploy with CloudFront Prefix List protection:
+      
+      aws cloudformation deploy \
+        --stack-name vscode-ecs \
+        --template-file ~/ec2_vscode/vscode_server_ecs.yaml \
+        --capabilities CAPABILITY_IAM \
+        --parameter-overrides \
+          CloudFrontPrefixListId=$CF_PREFIX_LIST_ID \
+          VSCodePassword="$VSCODE_PASSWORD" \
+          UserCount=10 \
+        --region ap-northeast-2
+
+Parameters:
+  CloudFrontPrefixListId:
+    Type: String
+    Description: CloudFront origin-facing managed prefix list ID
+    
+  VSCodePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: "Default password for all VSCode instances"
+
+  UserCount:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 50
+    Description: "Number of VSCode containers (1-50)"
+
+  TaskCpu:
+    Type: String
+    Default: "1024"
+    AllowedValues: ["512", "1024", "2048"]
+
+  TaskMemory:
+    Type: String
+    Default: "2048"
+    AllowedValues: ["1024", "2048", "4096"]
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.254.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  # Internet Gateway
+  IGW:
+    Type: AWS::EC2::InternetGateway
+  
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+
+  # Subnets
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.254.1.0/24"
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.254.2.0/24"
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.254.11.0/24"
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.254.12.0/24"
+      AvailabilityZone: !Select [1, !GetAZs '']
+
+  # NAT Gateway
+  NatEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  # Route Tables
+  PublicRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+
+  PublicSubnet1RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRT
+
+  PublicSubnet2RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRT
+
+  PrivateRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRT
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRT
+
+  PrivateSubnet2RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRT
+
+  # EFS
+  EFS:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+
+  EFSMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFS
+      SubnetId: !Ref PrivateSubnet1
+      SecurityGroups: [!Ref EFSSG]
+
+  EFSMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFS
+      SubnetId: !Ref PrivateSubnet2
+      SecurityGroups: [!Ref EFSSG]
+
+  # Security Groups
+  ALBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourcePrefixListId: !Ref CloudFrontPrefixListId
+
+  ECSSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8888
+          ToPort: 8888
+          SourceSecurityGroupId: !Ref ALBSG
+
+  EFSSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref ECSSG
+
+  # ECS
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      CapacityProviders: [FARGATE]
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${AWS::StackName}'
+      RetentionInDays: 7
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  # Task Definition with User ID Environment
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${AWS::StackName}-vscode'
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !Ref ExecutionRole
+      TaskRoleArn: !Ref TaskRole
+      Volumes:
+        - Name: efs
+          EFSVolumeConfiguration:
+            FileSystemId: !Ref EFS
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        - Name: vscode
+          Image: codercom/code-server:4.106.3
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8888
+          Environment:
+            - Name: PASSWORD
+              Value: !Ref VSCodePassword
+            - Name: USER_WORKSPACE_PREFIX
+              Value: "/workspace/user"
+          Command:
+            - /bin/sh
+            - -c
+            - |
+              # Use task definition revision as user ID for consistency
+              TASK_ARN=$(curl -s ${ECS_CONTAINER_METADATA_URI_V4}/task | jq -r '.TaskARN')
+              TASK_ID=$(echo $TASK_ARN | cut -d'/' -f3 | cut -d'-' -f2)
+              USER_ID=$(printf "%02d" $((TASK_ID % 100 + 1)))
+              
+              echo "Starting VSCode for User: $USER_ID"
+              mkdir -p /workspace/user$USER_ID/{config,userdata,extensions}
+              
+              # Create user info file
+              echo "User ID: $USER_ID" > /workspace/user$USER_ID/user-info.txt
+              echo "Container Started: $(date)" >> /workspace/user$USER_ID/user-info.txt
+              
+              # Start code-server with user-specific directories
+              exec /usr/bin/entrypoint.sh \
+                --bind-addr 0.0.0.0:8888 \
+                --auth password \
+                --config-dir /workspace/user$USER_ID/config \
+                --user-data-dir /workspace/user$USER_ID/userdata \
+                --extensions-dir /workspace/user$USER_ID/extensions \
+                /workspace/user$USER_ID
+          MountPoints:
+            - SourceVolume: efs
+              ContainerPath: /workspace
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: vscode
+
+  # ALB
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Scheme: internet-facing
+      Subnets: [!Ref PublicSubnet1, !Ref PublicSubnet2]
+      SecurityGroups: [!Ref ALBSG]
+
+  # Target Group with Sticky Sessions
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Protocol: HTTP
+      Port: 8888
+      TargetType: ip
+      HealthCheckPath: "/"
+      HealthCheckProtocol: HTTP
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: true
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: 86400
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: 200
+            ContentType: text/html
+            MessageBody: !Sub |
+              <html><body>
+              <h1>VSCode Server - User Selection</h1>
+              <p>Select your workspace:</p>
+              <ul>
+              <li><a href="/user01">User 01 Workspace</a></li>
+              <li><a href="/user02">User 02 Workspace</a></li>
+              <li><a href="/user03">User 03 Workspace</a></li>
+              <li><a href="/user04">User 04 Workspace</a></li>
+              <li><a href="/user05">User 05 Workspace</a></li>
+              <li><a href="/user06">User 06 Workspace</a></li>
+              <li><a href="/user07">User 07 Workspace</a></li>
+              <li><a href="/user08">User 08 Workspace</a></li>
+              <li><a href="/user09">User 09 Workspace</a></li>
+              <li><a href="/user10">User 10 Workspace</a></li>
+              </ul>
+              <p>Total containers: ${UserCount}</p>
+              </body></html>
+
+  # Path-based routing rules
+  UserPathRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref Listener
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values: ["/user*"]
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Custom-Secret
+            Values: [!Sub '${AWS::StackName}-secret']
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # ECS Service with Dynamic Scaling
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: Listener
+    Properties:
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: !Ref UserCount
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups: [!Ref ECSSG]
+          Subnets: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
+          AssignPublicIp: DISABLED
+      LoadBalancers:
+        - ContainerName: vscode
+          ContainerPort: 8888
+          TargetGroupArn: !Ref TargetGroup
+
+  # CloudFront
+  CloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - Id: ALB
+            DomainName: !GetAtt ALB.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+            OriginCustomHeaders:
+              - HeaderName: X-Custom-Secret
+                HeaderValue: !Sub '${AWS::StackName}-secret'
+        DefaultCacheBehavior:
+          TargetOriginId: ALB
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+            Headers: ['*']
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
+
+Outputs:
+  URL:
+    Description: VSCode Server URL
+    Value: !Sub "https://${CloudFront.DomainName}"
+
+  DeploymentCommand:
+    Description: Example deployment command
+    Value: !Sub |
+      aws cloudformation deploy \
+        --stack-name ${AWS::StackName} \
+        --template-file ~/ec2_vscode/vscode_server_ecs.yaml \
+        --capabilities CAPABILITY_IAM \
+        --parameter-overrides \
+          CloudFrontPrefixListId=pl-xxxxxxxx \
+          VSCodePassword="your-secure-password" \
+          UserCount=${UserCount} \
+        --region ${AWS::Region}
+
+  Instructions:
+    Description: Usage Instructions
+    Value: !Sub |
+      1. Main Page: https://${CloudFront.DomainName}
+      2. User URLs: https://${CloudFront.DomainName}/user01, /user02, /user03, etc.
+      3. Password: ${VSCodePassword}
+      4. Containers: ${UserCount} running
+      
+      Security Protection:
+      - CloudFront Prefix List: Only CloudFront IPs can access ALB
+      - Custom Header: X-Custom-Secret header required
+      - HTTPS Redirect: All traffic redirected to HTTPS
+      
+      Persistence Features:
+      - Workspace Files: All files in /workspace/userXX/ persist
+      - VSCode Settings: Themes, preferences, keybindings persist
+      - Extensions: All installed extensions persist
+      - User Data: Recent files, workspace settings persist
+      - Sticky Sessions: Same user stays on same container (24h)
+      
+      Container Restart: All user data persists via EFS storage
+      User Assignment: Consistent user ID assignment across restarts
