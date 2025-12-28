@@ -384,11 +384,16 @@ Resources:
           #!/bin/bash
           set -euxo pipefail
           
+          # Log all output
+          exec > >(tee /var/log/user-data.log) 2>&1
+          
+          echo "Starting user-data script at $(date)"
+          
           # System update with conflict resolution
           dnf update -y --allowerasing
           
-          # Install required packages
-          dnf install -y git jq wget tar gzip unzip python3 python3-pip
+          # Install required packages with conflict resolution
+          dnf install -y --allowerasing curl jq tar gzip python3 python3-pip
           
           # Install development tools
           dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools install failed"
@@ -410,18 +415,28 @@ Resources:
           wget -qO- https://astral.sh/uv/install.sh | sh
           
           # Install kiro-cli
-          wget -q "https://github.com/aws/kiro-cli/releases/latest/download/kiro-cli-linux-x86_64.tar.gz" -O kiro-cli.tar.gz
-          tar -xzf kiro-cli.tar.gz -C /usr/local/bin/
-          chmod +x /usr/local/bin/kiro-cli*
-          rm kiro-cli.tar.gz
+          cd /tmp
+          curl --proto '=https' --tlsv1.2 -sSf \
+            'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
+            -o 'kirocli.zip'
+          unzip -q kirocli.zip
+          chmod +x kiro-cli*
+          mv kiro-cli* /usr/local/bin/
+          rm -f kirocli.zip
+          echo "kiro-cli installed successfully"
           
           # Install code-server v4.106.3
           cd /tmp
-          wget https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-amd64.tar.gz
-          tar -xzf code-server-4.106.3-linux-amd64.tar.gz
-          mv code-server-4.106.3-linux-amd64 /usr/local/lib/code-server
-          ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
-          rm code-server-4.106.3-linux-amd64.tar.gz
+          if wget https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-amd64.tar.gz; then
+            tar -xzf code-server-4.106.3-linux-amd64.tar.gz
+            mv code-server-4.106.3-linux-amd64 /usr/local/lib/code-server
+            ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+            rm code-server-4.106.3-linux-amd64.tar.gz
+            echo "code-server installed successfully"
+          else
+            echo "ERROR: code-server download failed"
+            exit 1
+          fi
           
           # Configure code-server
           mkdir -p /home/ec2-user/.config/code-server
@@ -453,11 +468,8 @@ Resources:
           WantedBy=multi-user.target
           EOF
           
-          # Install Claude Code
-          wget -q "https://github.com/anthropics/claude-code/releases/latest/download/claude-code-linux-x86_64.tar.gz" -O claude-code.tar.gz
-          tar -xzf claude-code.tar.gz -C /usr/local/bin/
-          chmod +x /usr/local/bin/claude-code
-          rm claude-code.tar.gz
+          # Install Claude Code via npm
+          npm install -g @anthropic-ai/claude-code
           
           # Install Claude Code extension
           sudo -u ec2-user /usr/local/bin/code-server --install-extension anthropic.claude-code
@@ -473,6 +485,7 @@ Resources:
           rm amazon-cloudwatch-agent.rpm
           
           # Signal completion
+          echo "VSCode Server installation completed at $(date)" | tee -a /var/log/user-data.log
           echo "VSCode Server installation completed" > /var/log/vscode-setup.log
       Tags:
         - Key: Name
