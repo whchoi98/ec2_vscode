@@ -196,8 +196,8 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 8888
-          ToPort: 8888
+          FromPort: 8080
+          ToPort: 8080
           SourceSecurityGroupId: !Ref ALBSG
 
   EFSSG:
@@ -265,21 +265,34 @@ Resources:
             TransitEncryption: ENABLED
       ContainerDefinitions:
         - Name: vscode
-          Image: codercom/code-server:4.106.3
+          Image: public.ecr.aws/amazonlinux/amazonlinux:2023
           Essential: true
           PortMappings:
-            - ContainerPort: 8888
+            - ContainerPort: 8080
           Environment:
             - Name: PASSWORD
               Value: !Ref VSCodePassword
-            - Name: DOCKER_USER
-              Value: "1000"
           Command:
-            - "--bind-addr"
-            - "0.0.0.0:8888"
-            - "--auth"
-            - "password"
-            - "/workspace"
+            - /bin/bash
+            - -c
+            - |
+              # Install dependencies
+              dnf update -y
+              dnf install -y curl tar gzip
+              
+              # Install Node.js 20
+              curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+              dnf install -y nodejs
+              
+              # Install code-server
+              curl -fsSL https://code-server.dev/install.sh | sh
+              
+              # Start code-server
+              exec code-server \
+                --bind-addr 0.0.0.0:8080 \
+                --auth password \
+                --disable-telemetry \
+                /workspace
           MountPoints:
             - SourceVolume: efs
               ContainerPath: /workspace
@@ -305,7 +318,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       Protocol: HTTP
-      Port: 8888
+      Port: 8080
       TargetType: ip
       HealthCheckPath: "/"
       HealthCheckProtocol: HTTP
@@ -380,7 +393,7 @@ Resources:
           AssignPublicIp: DISABLED
       LoadBalancers:
         - ContainerName: vscode
-          ContainerPort: 8888
+          ContainerPort: 8080
           TargetGroupArn: !Ref TargetGroup
 
   # CloudFront
