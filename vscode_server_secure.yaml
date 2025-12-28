@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2'
+Description: 'Secure VSCode Server with CloudFront -> Internet-facing ALB -> Private EC2 (Custom Header Protection)'
 
 Metadata:
   "AWS::CloudFormation::Interface":
@@ -61,7 +61,7 @@ Parameters:
 
   InstanceType:
     Type: String
-    Default: m7i.2xlarge
+    Default: m8i.2xlarge
     Description: "EC2 Instance Type for VSCode Server"
     AllowedValues:
       - t4g.xlarge
@@ -69,6 +69,10 @@ Parameters:
       - t3.large
       - t3.xlarge
       - t3.2xlarge
+      - m8g.xlarge
+      - m8g.2xlarge
+      - m8i.xlarge
+      - m8i.2xlarge
       - m7g.xlarge
       - m7g.2xlarge
       - m7i.xlarge
@@ -384,21 +388,21 @@ Resources:
           #!/bin/bash
           set -euxo pipefail
           
-          # System update
-          dnf update -y
+          # System update with conflict resolution
+          dnf update -y --allowerasing
           
           # Install required packages
-          dnf install -y git jq wget tar gzip unzip curl python3 python3-pip
+          dnf install -y git jq wget tar gzip unzip python3 python3-pip
           
           # Install development tools
           dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools install failed"
           
           # Install Node.js 20
-          curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - || echo "[WARN] NodeSource setup failed"
+          wget -qO- https://rpm.nodesource.com/setup_20.x | bash - || echo "[WARN] NodeSource setup failed"
           dnf install -y nodejs
           
           # Install AWS CLI v2
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          wget "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -O "awscliv2.zip"
           unzip awscliv2.zip
           ./aws/install
           rm -rf aws awscliv2.zip
@@ -407,10 +411,10 @@ Resources:
           dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
           
           # Install uv package manager
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+          wget -qO- https://astral.sh/uv/install.sh | sh
           
           # Install kiro-cli
-          curl -L "https://github.com/aws/kiro-cli/releases/latest/download/kiro-cli-linux-x86_64.tar.gz" -o kiro-cli.tar.gz
+          wget -q "https://github.com/aws/kiro-cli/releases/latest/download/kiro-cli-linux-x86_64.tar.gz" -O kiro-cli.tar.gz
           tar -xzf kiro-cli.tar.gz -C /usr/local/bin/
           chmod +x /usr/local/bin/kiro-cli*
           rm kiro-cli.tar.gz
@@ -454,7 +458,7 @@ Resources:
           EOF
           
           # Install Claude Code
-          curl -L "https://github.com/anthropics/claude-code/releases/latest/download/claude-code-linux-x86_64.tar.gz" -o claude-code.tar.gz
+          wget -q "https://github.com/anthropics/claude-code/releases/latest/download/claude-code-linux-x86_64.tar.gz" -O claude-code.tar.gz
           tar -xzf claude-code.tar.gz -C /usr/local/bin/
           chmod +x /usr/local/bin/claude-code
           rm claude-code.tar.gz
