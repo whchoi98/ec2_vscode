@@ -681,12 +681,13 @@ Outputs:
     Description: How to access VSCode Server
     Value: !Sub |
       1. Primary Access (ONLY): https://${CloudFrontDistribution.DomainName}
-      2. Direct ALB Access: BLOCKED (403 Forbidden without CloudFront Prefix List)
+      2. Direct ALB Access: BLOCKED (403 Forbidden - requires CloudFront Prefix List + Custom Header)
       3. Direct EC2 (SSM): aws ssm start-session --target ${VSCodeServer}
       4. Password: Use the password provided during stack creation 
       
       Security: ALB only accepts requests from CloudFront origin-facing only
+      Custom Header Protection: Requests without X-Custom-Secret header are blocked with 403 Forbidden
 
   Architecture:
     Description: Network Architecture
-    Value: "CloudFront (HTTPS + CloudFront Prefix List) -> Internet-facing ALB (HTTP:80 + SG Reference) -> VSCode SVR on EC2 (HTTP:8888)"
+    Value: "CloudFront (HTTPS + CloudFront Prefix List) -> Internet-facing ALB (HTTP:80 + SG Reference + Custom Header Validation) -> VSCode SVR on EC2 (HTTP:8888)"
