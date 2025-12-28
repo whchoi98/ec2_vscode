@@ -196,8 +196,8 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: 8888
+          ToPort: 8888
           SourceSecurityGroupId: !Ref ALBSG
 
   EFSSG:
@@ -268,7 +268,7 @@ Resources:
           Image: public.ecr.aws/amazonlinux/amazonlinux:2023
           Essential: true
           PortMappings:
-            - ContainerPort: 8080
+            - ContainerPort: 8888
           Environment:
             - Name: PASSWORD
               Value: !Ref VSCodePassword
@@ -289,7 +289,7 @@ Resources:
               
               # Start code-server
               exec code-server \
-                --bind-addr 0.0.0.0:8080 \
+                --bind-addr 0.0.0.0:8888 \
                 --auth password \
                 --disable-telemetry \
                 /workspace
@@ -318,7 +318,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       Protocol: HTTP
-      Port: 8080
+      Port: 8888
       TargetType: ip
       HealthCheckPath: "/"
       HealthCheckProtocol: HTTP
@@ -393,7 +393,7 @@ Resources:
           AssignPublicIp: DISABLED
       LoadBalancers:
         - ContainerName: vscode
-          ContainerPort: 8080
+          ContainerPort: 8888
           TargetGroupArn: !Ref TargetGroup
 
   # CloudFront
