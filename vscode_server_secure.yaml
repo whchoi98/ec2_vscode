@@ -414,17 +414,6 @@ Resources:
           # Install uv package manager
           wget -qO- https://astral.sh/uv/install.sh | sh
           
-          # Install kiro-cli
-          cd /tmp
-          curl --proto '=https' --tlsv1.2 -sSf \
-            'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
-            -o 'kirocli.zip'
-          unzip -q kirocli.zip
-          chmod +x kiro-cli*
-          mv kiro-cli* /usr/local/bin/
-          rm -f kirocli.zip
-          echo "kiro-cli installed successfully"
-          
           # Install code-server v4.106.3
           cd /tmp
           if wget https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-amd64.tar.gz; then
@@ -468,12 +457,6 @@ Resources:
           WantedBy=multi-user.target
           EOF
           
-          # Install Claude Code via npm
-          npm install -g @anthropic-ai/claude-code
-          
-          # Install Claude Code extension
-          sudo -u ec2-user /usr/local/bin/code-server --install-extension anthropic.claude-code
-          
           # Enable and start service
           systemctl daemon-reload
           systemctl enable code-server
@@ -483,6 +466,30 @@ Resources:
           wget https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
           rpm -U ./amazon-cloudwatch-agent.rpm
           rm amazon-cloudwatch-agent.rpm
+          
+          # Install kiro-cli
+          cd /home/ec2-user
+          if curl --proto '=https' --tlsv1.2 -sSf \
+            'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
+            -o 'kirocli.zip'; then
+            unzip -q kirocli.zip
+            if ls kiro-cli* 1> /dev/null 2>&1; then
+              chmod +x kiro-cli*
+              mv kiro-cli* /usr/local/bin/
+              echo "kiro-cli installed successfully"
+            else
+              echo "WARNING: kiro-cli files not found in zip"
+            fi
+            rm -f kirocli.zip
+          else
+            echo "WARNING: kiro-cli download failed"
+          fi
+          
+          # Install Claude Code via npm
+          npm install -g @anthropic-ai/claude-code
+          
+          # Install Claude Code extension
+          sudo -u ec2-user /usr/local/bin/code-server --install-extension anthropic.claude-code
           
           # Signal completion
           echo "VSCode Server installation completed at $(date)" | tee -a /var/log/user-data.log
