@@ -272,32 +272,14 @@ Resources:
           Environment:
             - Name: PASSWORD
               Value: !Ref VSCodePassword
-            - Name: USER_WORKSPACE_PREFIX
-              Value: "/workspace/user"
+            - Name: DOCKER_USER
+              Value: "1000"
           Command:
-            - /bin/sh
-            - -c
-            - |
-              # Use task definition revision as user ID for consistency
-              TASK_ARN=$(curl -s ${ECS_CONTAINER_METADATA_URI_V4}/task | jq -r '.TaskARN')
-              TASK_ID=$(echo $TASK_ARN | cut -d'/' -f3 | cut -d'-' -f2)
-              USER_ID=$(printf "%02d" $((TASK_ID % 100 + 1)))
-              
-              echo "Starting VSCode for User: $USER_ID"
-              mkdir -p /workspace/user$USER_ID/{config,userdata,extensions}
-              
-              # Create user info file
-              echo "User ID: $USER_ID" > /workspace/user$USER_ID/user-info.txt
-              echo "Container Started: $(date)" >> /workspace/user$USER_ID/user-info.txt
-              
-              # Start code-server with user-specific directories
-              exec /usr/bin/entrypoint.sh \
-                --bind-addr 0.0.0.0:8888 \
-                --auth password \
-                --config-dir /workspace/user$USER_ID/config \
-                --user-data-dir /workspace/user$USER_ID/userdata \
-                --extensions-dir /workspace/user$USER_ID/extensions \
-                /workspace/user$USER_ID
+            - "--bind-addr"
+            - "0.0.0.0:8888"
+            - "--auth"
+            - "password"
+            - "/workspace"
           MountPoints:
             - SourceVolume: efs
               ContainerPath: /workspace
@@ -451,7 +433,7 @@ Outputs:
     Description: Usage Instructions
     Value: !Sub |
       1. Main Page: https://${CloudFront.DomainName}
-      2. User URLs: https://${CloudFront.DomainName}/user01, /user02, /user03, etc.
+      2. VSCode Access: https://${CloudFront.DomainName}/user01 (or any /user* path)
       3. Password: ${VSCodePassword}
       4. Containers: ${UserCount} running
       
@@ -461,11 +443,8 @@ Outputs:
       - HTTPS Redirect: All traffic redirected to HTTPS
       
       Persistence Features:
-      - Workspace Files: All files in /workspace/userXX/ persist
-      - VSCode Settings: Themes, preferences, keybindings persist
-      - Extensions: All installed extensions persist
-      - User Data: Recent files, workspace settings persist
+      - Workspace Files: All files in /workspace/ persist via EFS
+      - Load Balancing: ALB distributes users across containers
       - Sticky Sessions: Same user stays on same container (24h)
       
-      Container Restart: All user data persists via EFS storage
-      User Assignment: Consistent user ID assignment across restarts
+      Note: Simplified configuration for reliable container startup
