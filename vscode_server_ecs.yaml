@@ -211,9 +211,17 @@ Resources:
           ToPort: 2049
           SourceSecurityGroupId: !Ref ECSSG
 
+  # ECS Service Linked Role
+  ECSServiceLinkedRole:
+    Type: AWS::IAM::ServiceLinkedRole
+    Properties:
+      AWSServiceName: ecs.amazonaws.com
+      Description: Role to enable Amazon ECS to manage your cluster
+
   # ECS
   ECSCluster:
     Type: AWS::ECS::Cluster
+    DependsOn: ECSServiceLinkedRole
     Properties:
       CapacityProviders: [FARGATE]
 
