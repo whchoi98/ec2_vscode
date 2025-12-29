@@ -17,33 +17,15 @@ RUN dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools in
 RUN wget -qO- https://rpm.nodesource.com/setup_20.x | bash - || echo "[WARN] NodeSource setup failed"
 RUN dnf install -y nodejs
 
-# Install AWS CLI v2
-RUN cd /tmp && \
-    wget "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -O "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    ./aws/install && \
-    rm -rf aws awscliv2.zip
-
-# Install SSM Plugin
-RUN dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
-
-# Install uv package manager
+# Install uv package manager (needed for MCP)
 RUN wget -qO- https://astral.sh/uv/install.sh | sh
 
-# Install code-server v4.106.3
+# Install code-server (with fallback)
 RUN cd /tmp && \
-    wget https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-amd64.tar.gz && \
-    tar -xzf code-server-4.106.3-linux-amd64.tar.gz && \
-    mv code-server-4.106.3-linux-amd64 /usr/local/lib/code-server && \
-    ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server && \
-    rm code-server-4.106.3-linux-amd64.tar.gz && \
+    (curl -fsSL https://code-server.dev/install.sh | sh || \
+     (wget -O- https://code-server.dev/install.sh | sh)) && \
+    code-server --version && \
     echo "code-server installed successfully"
-
-# Install CloudWatch agent
-RUN cd /tmp && \
-    wget https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm && \
-    rpm -U ./amazon-cloudwatch-agent.rpm && \
-    rm amazon-cloudwatch-agent.rpm
 
 # Install kiro-cli
 RUN cd /tmp && \
