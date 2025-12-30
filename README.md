@@ -143,3 +143,6 @@ aws cloudformation deploy \
 ```
 
 ```
+
+---
+*Last updated: 2024-12-30 - PAT 연동 테스트*
