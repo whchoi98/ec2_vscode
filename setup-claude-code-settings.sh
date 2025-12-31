@@ -41,8 +41,11 @@ if [ -f "$SETTINGS_FILE" ]; then
     echo -e "${YELLOW}기존 설정 파일 백업됨: ${BACKUP_FILE}${NC}"
 fi
 
-# Claude Code 설정 JSON
-CLAUDE_CODE_SETTINGS=$(cat << EOF
+# 임시 파일 생성
+TEMP_FILE=$(mktemp)
+
+# Claude Code 설정 JSON을 임시 파일에 저장
+cat > "$TEMP_FILE" << EOF
 {
     "claudeCode.environmentVariables": [
     {
@@ -87,34 +90,50 @@ CLAUDE_CODE_SETTINGS=$(cat << EOF
     "claudeCode.selectedModel": "global.anthropic.claude-opus-4-5-20251101-v1:0"
 }
 EOF
-)
 
 # 기존 파일이 있으면 병합, 없으면 새로 생성
 if [ -f "$SETTINGS_FILE" ] && [ -s "$SETTINGS_FILE" ]; then
     echo ""
     echo -e "${BLUE}기존 설정 파일에 Claude Code 설정을 추가합니다...${NC}"
 
-    # 기존 JSON과 새 설정 병합 (새 설정이 우선)
-    MERGED=$(jq -s '.[0] * .[1]' "$SETTINGS_FILE" <(echo "$CLAUDE_CODE_SETTINGS"))
+    # 기존 JSON과 새 설정 병합 (기존 설정 + 새 Claude Code 설정)
+    # 기존 설정이 기본, 새 설정으로 claudeCode 관련 키만 추가/덮어쓰기
+    MERGED_FILE=$(mktemp)
 
-    if [ $? -eq 0 ]; then
-        echo "$MERGED" > "$SETTINGS_FILE"
+    if jq -s '.[0] * .[1]' "$SETTINGS_FILE" "$TEMP_FILE" > "$MERGED_FILE" 2>/dev/null; then
+        # 병합 성공 - 결과를 원본 파일에 복사
+        cp "$MERGED_FILE" "$SETTINGS_FILE"
+        echo -e "${GREEN}기존 설정과 병합 완료${NC}"
     else
-        echo -e "${RED}JSON 병합 실패. 새 설정 파일로 생성합니다.${NC}"
-        echo "$CLAUDE_CODE_SETTINGS" | jq '.' > "$SETTINGS_FILE"
+        echo -e "${RED}JSON 병합 실패. 기존 파일 형식을 확인하세요.${NC}"
+        echo -e "${YELLOW}백업 파일에서 복원 가능: ${BACKUP_FILE}${NC}"
+        rm -f "$TEMP_FILE" "$MERGED_FILE"
+        exit 1
     fi
+
+    rm -f "$MERGED_FILE"
 else
     echo ""
     echo -e "${BLUE}새 설정 파일을 생성합니다...${NC}"
-    echo "$CLAUDE_CODE_SETTINGS" | jq '.' > "$SETTINGS_FILE"
+    cp "$TEMP_FILE" "$SETTINGS_FILE"
 fi
 
+# 임시 파일 삭제
+rm -f "$TEMP_FILE"
+
+# 결과 출력
 echo ""
 echo -e "${GREEN}==========================================${NC}"
 echo -e "${GREEN} 설정이 완료되었습니다!${NC}"
 echo -e "${GREEN}==========================================${NC}"
 echo ""
 echo "경로: $SETTINGS_FILE"
+echo ""
+echo -e "${BLUE}현재 설정 내용:${NC}"
+echo "-------------------------------------"
+cat "$SETTINGS_FILE"
+echo ""
+echo "-------------------------------------"
 echo ""
 echo "====================================="
 echo -e "${YELLOW}설정을 적용하려면 다음 명령어를 실행하세요:${NC}"
