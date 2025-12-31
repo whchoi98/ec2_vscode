@@ -1,148 +1,128 @@
+# EC2 VSCode Server - Secure Architecture
 
-# Option1 : Default VPC 에 EC2 Code Server 배포 / EC2 Code Server Deployment in a Default VPC / code server (version 4.96.2)
+AWS CloudFormation을 사용하여 보안이 강화된 VSCode Server를 배포합니다.
 
-이 리포지토리는 Default VPC에서 Amazon EC2 인스턴스에 VS Code 서버를 배포하는 AWS CloudFormation 템플릿을 포함하고 있습니다. 이 인스턴스는 AWS Systems Manager(SSM)를 지원하여 원격 관리가 가능하며, 개발에 필요한 도구들이 사전 설치되어 있습니다.
+## Architecture
 
-This repository contains an AWS CloudFormation template for deploying an EC2 instance with VS Code Server in a default VPC. The instance supports AWS Systems Manager (SSM) for remote management and comes pre-installed with necessary tools for development.
+![VSCode on EC2 Architecture](VSCode%20on%20EC2.png)
 
-## 사전 요구 사항 / Prerequisites
+### 구성 요소
 
-1. AWS CLI가 설치되고 적절한 권한으로 구성되어 있어야 합니다.
-2. IAM 역할 생성을 위한 AWS CloudFormation 권한이 필요합니다.
+| 구성 요소 | CIDR / 설명 |
+|---------|------------|
+| VPC | 10.254.0.0/16 |
+| Public Subnet A | 10.254.11.0/24 (ALB, NAT Gateway) |
+| Public Subnet B | 10.254.12.0/24 (NAT Gateway) |
+| Private Subnet A | 10.254.21.0/24 (VSCode Server EC2) |
 
-1. AWS CLI installed and configured with appropriate permissions.
-2. AWS CloudFormation capabilities to create IAM roles.
+### 트래픽 흐름
 
-## 시작하기 / Getting Started
+```
+User -> CloudFront (HTTPS) -> ALB (HTTP:80) -> EC2 VSCode Server (TCP:8888)
+```
 
-### Clone the Repository (in Cloudshell or Others Terminal)
+### 보안 기능
+
+- **CloudFront Prefix List**: ALB Security Group에서 CloudFront origin-facing IP만 허용
+- **X-Custom-Secret Header**: CloudFront에서 ALB로 전달되는 커스텀 헤더로 직접 ALB 접근 차단
+- **Private Subnet**: VSCode Server가 Private Subnet에 배치되어 직접 인터넷 노출 없음
+- **SSM VPC Endpoints**: Private Subnet에서 SSM Session Manager 접근 지원
+
+### EC2 User-Data 설치 항목
+
+- SSM Agent
+- AWS CLI Latest
+- Node.js 20, Python3
+- Kiro CLI
+- Claude Code
+- code-server v4.106.3
+- Development Tools (Util)
+
+## Prerequisites
+
+- AWS CLI 설치 및 적절한 권한 구성
+- CloudFormation IAM 역할 생성 권한
+
+## Quick Start
+
+### 1. Repository Clone
 
 ```bash
 git clone https://github.com/whchoi98/ec2_vscode.git
 ```
 
-### Pem Key (Option)
+### 2. VSCode Server Password 설정
 
 ```bash
-cd ~
-ssh-keygen -t rsa -b 4096 -C "your_email@example.com" -f ec2vscode
-mv ./ec2vscode ./ec2vscode.pem
-chmod 400 ./ec2vscode.pem
-aws ec2 import-key-pair --key-name "ec2vscode" --public-key-material fileb://./ec2vscode.pub
+# VSCode Server Password를 변경하세요 (최소 8자 이상)
+export VSCODE_PASSWORD='1234Qwer'
 ```
 
-### CloudFormation 스택 배포 / Deploy the CloudFormation Stack (in Cloudshell or Others Terminal)
-
-AWS CLI가 `ap-northeast-2` 리전으로 설정되어 있는지 확인하세요:
-
-Ensure your AWS CLI is configured with the `ap-northeast-2` region:
+### 3. CloudFront Prefix List ID 조회
 
 ```bash
-source ~/.bash_profile
-export AWS_REGION=ap-northeast-2
-~/ec2_vscode/defaultvpcid.sh
-source ~/.bashrc
+CF_PREFIX_LIST_ID=$(aws ec2 describe-managed-prefix-lists \
+  --query "PrefixLists[?PrefixListName=='com.amazonaws.global.cloudfront.origin-facing'].PrefixListId" \
+  --output text)
+echo "CloudFront Prefix List ID = $CF_PREFIX_LIST_ID"
 ```
 
-CloudFormation 스택 배포:
-
-Deploy the CloudFormation stack:
+### 4. CloudFormation 스택 배포
 
 ```bash
 aws cloudformation deploy \
-  --template-file "~/ec2_vscode/ec2vscode.yaml" \
-  --stack-name=ec2vscodeserver \
+  --stack-name mgmt-vpc \
+  --template-file ~/ec2_vscode/vscode_server_secure.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
-    InstanceType=t3.xlarge \
-    AMIType=AmazonLinux2023 \
-    DefaultVPCId=$DEFAULT_VPC_ID \
-    PublicSubnetId=$PUBLIC_SUBNET_ID \
-  --capabilities CAPABILITY_NAMED_IAM
+    CloudFrontPrefixListId=$CF_PREFIX_LIST_ID \
+    VSCodePassword="$VSCODE_PASSWORD" \
+  --region ap-northeast-2
 ```
 
-## 파라미터 / Parameters (in Cloudshell or Others Terminal)
+### 5. 접속
 
-- **InstanceType**: 배포할 EC2 인스턴스 유형 (기본값: `t3.xlarge`)
-- **AMIType**: 배포할 기본 Image (기본값: `AmazonLinux2023`)
-- **DefaultVPCId**: Default VPC ID
-- **PublicSubnetId**: Public Subnet ID
-
-## 주의 사항 / Notes
-
-- 템플릿은 Amazon Linux 2 또는 Amazon Linux 2023을 사용합니다.
-- 배포된 EC2 인스턴스에는 원격 관리가 가능한 AWS Systems Manager(SSM)가 활성화되어 있습니다.
-
-- The template uses Amazon Linux 2 or Amazon Linux 2023, depending on your selection.
-- AWS Systems Manager (SSM) is enabled for the deployed EC2 instance, allowing for remote management.
-
-## 보안 고려 사항 / Security Considerations
-
-- 보안 그룹을 통해 EC2 인스턴스에 대한 접근을 제한하세요.
-- 정기적으로 EC2 인스턴스를 업데이트하여 보안 패치를 적용하세요.
-
-- Make sure to limit access to the EC2 instance via security groups.
-- Regularly update your EC2 instance to apply security patches.
-
-## EC2 VS Code Server로 연결 및 보안 설정 / Connect to EC2 VS Code Server and Set Security
-
-## IP Address 확인 / Check IP Address (in Cloudshell or Others Terminal)
-
-서버의 Public IP를 확인하려면 아래 스크립트를 사용하세요:
-
-To check the server's Public IP, use the script below:
+CloudFormation Output에 CloudFront URL이 자동 포함되어 있습니다. 배포 시 설정한 패스워드를 입력하세요.
 
 ```bash
-~/ec2_vscode/vscode_ip.sh
+aws cloudformation describe-stacks \
+  --stack-name mgmt-vpc \
+  --query "Stacks[0].Outputs[?OutputKey=='CloudFrontURL'].OutputValue" \
+  --output text \
+  --region ap-northeast-2
 ```
 
-```
-$ ~/ec2_vscode/vscode_ip.sh
-EC2VSCodeServer = xxx.xxx.xxx.xxx
-```
+## Parameters
 
-EC2가 완전하게 배포된 후 3~5분 뒤에 브라우저에서 EC2VSCodeServer PublicIP:8888으로 접속합니다.
+| 파라미터 | 기본값 | 설명 |
+|---------|-------|------|
+| CloudFrontPrefixListId | (필수) | CloudFront origin-facing managed prefix list ID |
+| AvailabilityZoneA | ap-northeast-2a | 첫 번째 가용 영역 |
+| AvailabilityZoneB | ap-northeast-2b | 두 번째 가용 영역 |
+| VPCCIDRBlock | 10.254.0.0/16 | VPC CIDR |
+| PublicSubnetABlock | 10.254.11.0/24 | Public Subnet A CIDR |
+| PublicSubnetBBlock | 10.254.12.0/24 | Public Subnet B CIDR |
+| PrivateSubnetABlock | 10.254.21.0/24 | Private Subnet A CIDR |
+| PrivateSubnetBBlock | 10.254.22.0/24 | Private Subnet B CIDR |
+| InstanceType | m7i.2xlarge | EC2 인스턴스 타입 |
+| VSCodePassword | (필수) | VSCode Server 비밀번호 (최소 8자) |
 
-After the EC2 is fully deployed, access the server via a browser at `EC2VSCodeServer PublicIP:8888`. Then, execute the following commands in the EC2VSCodeServer terminal:
+## Outputs
 
-<img width="588" alt="image" src="https://github.com/user-attachments/assets/c1e6cd3c-6693-4fad-b201-b032353c1462">
+| Output | 설명 |
+|--------|------|
+| CloudFrontURL | VSCode Server 접속 URL (HTTPS) |
+| VSCodeServerInstanceId | EC2 Instance ID (SSM 접속용) |
+| VSCodeServerPrivateIP | EC2 Private IP |
 
-EC2VSCodeServer Terminal에서 아래를 실행합니다.
+## SSM 접속
 
 ```bash
-git clone https://github.com/whchoi98/ec2_vscode.git
+aws ssm start-session --target <VSCodeServerInstanceId>
 ```
 
-비밀번호 설정을 확인하고, 적절한 비밀번호로 변경한 후 다음 스크립트를 실행하세요:
-
-Check the password configuration, change it to an appropriate password, and then run the following script:
+## 스택 삭제
 
 ```bash
-cat ~/ec2_vscode/vscode_pwd.sh
-
-~/ec2_vscode/vscode_pwd.sh
+aws cloudformation delete-stack --stack-name mgmt-vpc --region ap-northeast-2
 ```
-
-더 자세한 구성 및 커스터마이징 옵션에 대해서는 이 리포지토리의 CloudFormation 템플릿을 참조하세요.
-
-For more details on the configuration and customization options, refer to the CloudFormation template in this repository.
-
-## Option 2 :  새로운 VPC에 EC2 Code Server 배포 / ALB on a Public Subnet + VSCode Server on a Private Subnet 조합 ##
-
-## 새로운 VPC에 설치하기 / Getting Started
-
-### 새로운 VPC 설치 / Deploy New VPC
-
-```
-aws cloudformation deploy \
-  --template-file "~/ec2_vscode/vscode_secure.yml" \
-  --stack-name=mgmtvpc \
-  --capabilities CAPABILITY_NAMED_IAM
-```
-
-### ALB로 접속합니다.
-```
-
-```
-
----
-*Last updated: 2024-12-30 - PAT 연동 테스트*
