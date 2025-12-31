@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Claude Code for VS Code Extension 설정 스크립트
+# Claude Code for VS Code Extension (EC2 code-server) 설정 스크립트
 
 # 색상 정의
 GREEN='\033[0;32m'
@@ -8,36 +8,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# code-server 설정 경로
+SETTINGS_DIR="/home/ec2-user/.local/share/code-server/User"
+
 echo "====================================="
 echo " Claude Code for VS Code 설정 스크립트"
+echo " (EC2 code-server 환경)"
 echo "====================================="
 echo ""
-
-# OS 감지 및 설정 경로 결정
-detect_os_and_path() {
-    case "$(uname -s)" in
-        Linux*)
-            SETTINGS_DIR="$HOME/.config/Code/User"
-            OS_NAME="Linux"
-            ;;
-        Darwin*)
-            SETTINGS_DIR="$HOME/Library/Application Support/Code/User"
-            OS_NAME="macOS"
-            ;;
-        CYGWIN*|MINGW*|MSYS*)
-            SETTINGS_DIR="$APPDATA/Code/User"
-            OS_NAME="Windows"
-            ;;
-        *)
-            echo "지원하지 않는 운영체제입니다."
-            exit 1
-            ;;
-    esac
-}
-
-detect_os_and_path
-
-echo -e "${BLUE}감지된 OS: ${OS_NAME}${NC}"
 echo -e "${BLUE}설정 경로: ${SETTINGS_DIR}${NC}"
 echo ""
 
@@ -110,13 +88,8 @@ echo ""
 echo "경로: $SETTINGS_DIR/settings.json"
 echo ""
 echo "====================================="
-echo -e "${YELLOW}설정을 적용하려면:${NC}"
+echo -e "${YELLOW}설정을 적용하려면 다음 명령어를 실행하세요:${NC}"
 echo ""
-echo "  1. VS Code를 완전히 종료합니다"
-echo "  2. VS Code를 다시 실행합니다"
-echo ""
-echo -e "${YELLOW}또는 VS Code 내에서:${NC}"
-echo "  - Command Palette (Ctrl+Shift+P / Cmd+Shift+P) 열기"
-echo "  - 'Developer: Reload Window' 실행"
+echo "  sudo systemctl restart code-server"
 echo ""
 echo "====================================="
