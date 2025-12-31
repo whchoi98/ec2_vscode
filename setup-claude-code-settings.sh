@@ -43,6 +43,7 @@ fi
 
 # 임시 파일 생성
 TEMP_FILE=$(mktemp)
+TEMP_EXISTING=$(mktemp)
 
 # Claude Code 설정 JSON을 임시 파일에 저장
 cat > "$TEMP_FILE" << EOF
@@ -91,23 +92,31 @@ cat > "$TEMP_FILE" << EOF
 }
 EOF
 
+# trailing comma 제거 함수 (VS Code JSON은 trailing comma를 허용하지만 jq는 허용하지 않음)
+fix_json_trailing_comma() {
+    # 줄바꿈을 임시 문자로 변환 후 ,} 또는 ,] 패턴 제거
+    cat "$1" | tr '\n' '\r' | sed 's/,\r\s*}/\r}/g; s/,\r\s*]/\r]/g' | tr '\r' '\n'
+}
+
 # 기존 파일이 있으면 병합, 없으면 새로 생성
 if [ -f "$SETTINGS_FILE" ] && [ -s "$SETTINGS_FILE" ]; then
     echo ""
     echo -e "${BLUE}기존 설정 파일에 Claude Code 설정을 추가합니다...${NC}"
 
+    # trailing comma 제거 후 임시 파일에 저장
+    fix_json_trailing_comma "$SETTINGS_FILE" > "$TEMP_EXISTING"
+
     # 기존 JSON과 새 설정 병합 (기존 설정 + 새 Claude Code 설정)
-    # 기존 설정이 기본, 새 설정으로 claudeCode 관련 키만 추가/덮어쓰기
     MERGED_FILE=$(mktemp)
 
-    if jq -s '.[0] * .[1]' "$SETTINGS_FILE" "$TEMP_FILE" > "$MERGED_FILE" 2>/dev/null; then
+    if jq -s '.[0] * .[1]' "$TEMP_EXISTING" "$TEMP_FILE" > "$MERGED_FILE" 2>/dev/null; then
         # 병합 성공 - 결과를 원본 파일에 복사
         cp "$MERGED_FILE" "$SETTINGS_FILE"
         echo -e "${GREEN}기존 설정과 병합 완료${NC}"
     else
         echo -e "${RED}JSON 병합 실패. 기존 파일 형식을 확인하세요.${NC}"
         echo -e "${YELLOW}백업 파일에서 복원 가능: ${BACKUP_FILE}${NC}"
-        rm -f "$TEMP_FILE" "$MERGED_FILE"
+        rm -f "$TEMP_FILE" "$TEMP_EXISTING" "$MERGED_FILE"
         exit 1
     fi
 
@@ -119,7 +128,7 @@ else
 fi
 
 # 임시 파일 삭제
-rm -f "$TEMP_FILE"
+rm -f "$TEMP_FILE" "$TEMP_EXISTING"
 
 # 결과 출력
 echo ""
