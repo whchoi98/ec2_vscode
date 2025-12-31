@@ -126,3 +126,68 @@ aws ssm start-session --target <VSCodeServerInstanceId>
 ```bash
 aws cloudformation delete-stack --stack-name mgmt-vpc --region ap-northeast-2
 ```
+
+## Claude Code + Amazon Bedrock 설정 스크립트
+
+VSCode Server 배포 후 Claude Code를 Amazon Bedrock과 연동하기 위한 설정 스크립트입니다.
+
+### 1. setup-vscode-extension-settings.sh
+
+**용도**: VS Code Extension (code-server 웹 UI) 환경에서 Claude Code 설정
+
+code-server의 `settings.json`에 Claude Code Extension 설정을 추가합니다.
+
+**설정 항목**:
+- CLAUDE_CODE_USE_BEDROCK: Bedrock 사용 활성화
+- AWS_BEARER_TOKEN_BEDROCK: Bedrock 인증 토큰
+- ANTHROPIC_MODEL: Claude Opus 4.5
+- ANTHROPIC_SMALL_FAST_MODEL: Claude Haiku 4.5
+
+**사용 방법**:
+
+```bash
+# VSCode Server (code-server) 터미널에서 실행
+git clone https://github.com/whchoi98/ec2_vscode.git
+chmod +x ~/ec2_vscode/setup-vscode-extension-settings.sh
+~/ec2_vscode/setup-vscode-extension-settings.sh
+
+# AWS_BEARER_TOKEN_BEDROCK 값 입력 프롬프트가 표시됩니다
+# 설정 완료 후 code-server 재시작
+sudo systemctl restart code-server
+```
+
+### 2. setup-claude-bedrock-bashrc.sh
+
+**용도**: CLI (터미널) 환경에서 Claude Code 사용을 위한 bashrc 환경 변수 설정
+
+`~/.bashrc`에 Claude Code + Bedrock 환경 변수를 추가합니다.
+
+**설정 항목**:
+- ANTHROPIC_API_KEY: Anthropic API 키
+- AWS_BEARER_TOKEN_BEDROCK: Bedrock 인증 토큰
+- CLAUDE_CODE_USE_BEDROCK: Bedrock 사용 활성화
+- ANTHROPIC_MODEL: Claude Opus 4.5
+- ANTHROPIC_SMALL_FAST_MODEL: Claude Haiku 4.5
+
+**사용 방법**:
+
+```bash
+# SSM 또는 터미널에서 실행
+git clone https://github.com/whchoi98/ec2_vscode.git
+chmod +x ~/ec2_vscode/setup-claude-bedrock-bashrc.sh
+~/ec2_vscode/setup-claude-bedrock-bashrc.sh
+
+# ANTHROPIC_API_KEY, AWS_BEARER_TOKEN_BEDROCK 값 입력 프롬프트가 표시됩니다
+# 설정 적용
+source ~/.bashrc
+
+# Claude Code CLI 실행
+claude
+```
+
+### 스크립트 선택 가이드
+
+| 환경 | 스크립트 | 설명 |
+|-----|---------|------|
+| VS Code 웹 UI (브라우저) | `setup-vscode-extension-settings.sh` | Claude Code Extension 사용 |
+| 터미널 / CLI | `setup-claude-bedrock-bashrc.sh` | Claude Code CLI 사용 |
