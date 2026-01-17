@@ -393,9 +393,10 @@ Resources:
           dnf update -y --allowerasing
           
           # Install required packages with conflict resolution
-          dnf install -y --allowerasing curl jq tar gzip python3 python3-pip
+          dnf install -y --allowerasing curl jq tar gzip python3
 
-          # Install boto3
+          # Install pip3 and boto3
+          dnf install -y python3-pip
           pip3 install boto3
 
           # Install development tools
