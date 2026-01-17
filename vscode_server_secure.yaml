@@ -397,7 +397,7 @@ Resources:
 
           # Install pip3 and Python packages
           dnf install -y python3-pip
-          pip3 install boto3 click
+          pip3 install boto3 click bedrock-agentcore
 
           # Install development tools
           dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools install failed"
