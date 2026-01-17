@@ -394,7 +394,10 @@ Resources:
           
           # Install required packages with conflict resolution
           dnf install -y --allowerasing curl jq tar gzip python3 python3-pip
-          
+
+          # Install boto3
+          pip3 install boto3
+
           # Install development tools
           dnf groupinstall -y "Development Tools" || echo "[WARN] Development Tools install failed"
           
