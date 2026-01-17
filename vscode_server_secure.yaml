@@ -413,7 +413,13 @@ Resources:
           
           # Install SSM Plugin
           dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm
-          
+
+          # Install Docker
+          dnf install -y docker
+          systemctl enable docker
+          systemctl start docker
+          usermod -aG docker ec2-user
+
           # Install uv package manager
           wget -qO- https://astral.sh/uv/install.sh | sh
           
