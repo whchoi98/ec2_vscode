@@ -420,6 +420,7 @@ Resources:
           systemctl enable docker
           systemctl start docker
           usermod -aG docker ec2-user
+          echo "Docker installed: $(docker --version)" >> /var/log/user-data.log
 
           # Install uv package manager
           wget -qO- https://astral.sh/uv/install.sh | sh
