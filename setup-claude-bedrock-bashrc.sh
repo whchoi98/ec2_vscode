@@ -23,6 +23,30 @@ if [ -z "$AWS_TOKEN" ]; then
     exit 1
 fi
 
+# ANTHROPIC_MODEL 선택
+echo
+echo "사용할 모델을 선택하세요:"
+echo "  1) opus4.6   (global.anthropic.claude-opus-4-6-v1)"
+echo "  2) opus4.5   (global.anthropic.claude-opus-4-5-20251101-v1:0)"
+echo "  3) sonnet4.5 (global.anthropic.claude-sonnet-4-5-20250929-v1:0)"
+echo
+read -p "선택 (1, 2 또는 3, 기본값: 1): " MODEL_CHOICE
+
+case "$MODEL_CHOICE" in
+    2)
+        SELECTED_MODEL="global.anthropic.claude-opus-4-5-20251101-v1:0"
+        echo "선택된 모델: opus4.5"
+        ;;
+    3)
+        SELECTED_MODEL="global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        echo "선택된 모델: sonnet4.5"
+        ;;
+    *)
+        SELECTED_MODEL="global.anthropic.claude-opus-4-6-v1"
+        echo "선택된 모델: opus4.6"
+        ;;
+esac
+
 # 기존 설정 확인
 if grep -q "# Claude Code + Amazon Bedrock 설정" "$BASHRC_FILE" 2>/dev/null; then
     echo "기존 Claude Code + Bedrock 설정이 발견되었습니다."
@@ -44,8 +68,7 @@ cat >> "$BASHRC_FILE" << EOF
 export ANTHROPIC_API_KEY="${ANTHROPIC_KEY}"
 export AWS_BEARER_TOKEN_BEDROCK='${AWS_TOKEN}'
 export CLAUDE_CODE_USE_BEDROCK=1
-export ANTHROPIC_MODEL='global.anthropic.claude-opus-4-5-20251101-v1:0'
-#export ANTHROPIC_MODEL='global.anthropic.claude-sonnet-4-5-20250929-v1:0'
+export ANTHROPIC_MODEL='${SELECTED_MODEL}'
 export ANTHROPIC_SMALL_FAST_MODEL='us.anthropic.claude-haiku-4-5-20251001-v1:0'
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
 
