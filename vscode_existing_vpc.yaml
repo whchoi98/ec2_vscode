@@ -363,6 +363,13 @@ Resources:
           # Install Claude Code via npm
           npm install -g @anthropic-ai/claude-code || echo "[WARN] Claude Code CLI install failed"
 
+          # Ensure claude CLI is accessible system-wide (fnm puts global bins outside /usr/local/bin)
+          CLAUDE_NPM_BIN="$(npm bin -g 2>/dev/null)/claude"
+          if [ -f "$CLAUDE_NPM_BIN" ] && [ ! -f /usr/local/bin/claude ]; then
+            ln -sf "$CLAUDE_NPM_BIN" /usr/local/bin/claude
+            echo "Claude CLI symlinked: $CLAUDE_NPM_BIN -> /usr/local/bin/claude"
+          fi
+
           # Install Claude Code extension for code-server (Open VSX)
           sudo -u ec2-user /usr/local/bin/code-server --install-extension Anthropic.claude-code || {
             echo "[WARN] Extension install via gallery failed, trying VSIX direct download..."
