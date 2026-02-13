@@ -196,7 +196,7 @@ sed -i "s|code-server-4.106.3-linux-amd64\.tar\.gz|${CODESERVER_TAR}|g" "${TEMPL
 sed -i "s|code-server-4.106.3-linux-amd64|${CODESERVER_DIR}|g" "${TEMPLATE_WORK}"
 
 # CloudWatch Agent
-sed -i "s|amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm|$(echo "${CW_AGENT_URL}" | grep -oP 'amazoncloudwatch-agent/\K[^$]+')|g" "${TEMPLATE_WORK}"
+sed -i "s|amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm|amazon_linux/${ARCH}/latest/amazon-cloudwatch-agent.rpm|g" "${TEMPLATE_WORK}"
 
 # kiro-cli
 sed -i "s|kirocli-x86_64-linux.zip|$(basename "${KIRO_URL}")|g" "${TEMPLATE_WORK}"
