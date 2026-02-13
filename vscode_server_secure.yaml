@@ -516,14 +516,18 @@ Resources:
             echo "WARNING: kiro-cli download failed"
           fi
           
-          # Install Claude Code via npm
-          npm install -g @anthropic-ai/claude-code || echo "[WARN] Claude Code CLI install failed"
+          # Install Claude Code via npm (retry once on failure)
+          npm install -g @anthropic-ai/claude-code || {
+            echo "[WARN] Claude Code CLI install failed, retrying in 10s..."
+            sleep 10
+            npm install -g @anthropic-ai/claude-code || echo "[WARN] Claude Code CLI install failed after retry"
+          }
 
-          # Ensure claude CLI is accessible system-wide (fnm puts global bins outside /usr/local/bin)
-          CLAUDE_NPM_BIN="$(npm bin -g 2>/dev/null)/claude"
-          if [ -f "$CLAUDE_NPM_BIN" ] && [ ! -f /usr/local/bin/claude ]; then
-            ln -sf "$CLAUDE_NPM_BIN" /usr/local/bin/claude
-            echo "Claude CLI symlinked: $CLAUDE_NPM_BIN -> /usr/local/bin/claude"
+          # Ensure claude CLI is accessible system-wide (fnm puts global bins outside PATH)
+          NPM_PREFIX="$(npm prefix -g 2>/dev/null)"
+          if [ -n "$NPM_PREFIX" ] && [ -f "$NPM_PREFIX/bin/claude" ] && ! command -v claude &>/dev/null; then
+            ln -sf "$NPM_PREFIX/bin/claude" /usr/local/bin/claude
+            echo "Claude CLI symlinked: $NPM_PREFIX/bin/claude -> /usr/local/bin/claude"
           fi
 
           # Install Claude Code extension for code-server (Open VSX)
