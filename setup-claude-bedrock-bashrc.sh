@@ -26,7 +26,7 @@ fi
 # ANTHROPIC_MODEL 선택
 echo
 echo "사용할 모델을 선택하세요:"
-echo "  1) opus4.6   (anthropic.claude-opus-4-6-v1)"
+echo "  1) opus4.6   (global.anthropic.claude-opus-4-6-v1)"
 echo "  2) opus4.5   (global.anthropic.claude-opus-4-5-20251101-v1:0)"
 echo "  3) sonnet4.5 (global.anthropic.claude-sonnet-4-5-20250929-v1:0)"
 echo

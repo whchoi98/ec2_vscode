@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Single User VSCode Container - Nested Stack Component'
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: VPC ID
+    
+  PrivateSubnetA:
+    Type: String
+    Description: Private Subnet A ID
+    
+  PrivateSubnetB:
+    Type: String
+    Description: Private Subnet B ID
+    
+  ECSCluster:
+    Type: String
+    Description: ECS Cluster Name
+    
+  ECSSecurityGroup:
+    Type: String
+    Description: ECS Security Group ID
+    
+  EFSFileSystem:
+    Type: String
+    Description: EFS File System ID
+    
+  VSCodeLogGroup:
+    Type: String
+    Description: CloudWatch Log Group Name
+    
+  ECSExecutionRole:
+    Type: String
+    Description: ECS Execution Role ARN
+    
+  ECSTaskRole:
+    Type: String
+    Description: ECS Task Role ARN
+    
+  TaskCpu:
+    Type: String
+    Description: CPU units for task
+    
+  TaskMemory:
+    Type: String
+    Description: Memory for task
+    
+  DefaultPassword:
+    Type: String
+    NoEcho: true
+    Description: Default password for VSCode
+    
+  UserNumber:
+    Type: Number
+    Description: User number (1-20)
+    
+  PublicALBListener:
+    Type: String
+    Description: ALB Listener ARN
+    
+  CustomHeaderSecret:
+    Type: String
+    Description: Custom header secret value
+
+Resources:
+  # Task Definition
+  VSCodeTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${AWS::StackName}-user${UserNumber}-vscode'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      Volumes:
+        - Name: efs-volume
+          EFSVolumeConfiguration:
+            FileSystemId: !Ref EFSFileSystem
+            RootDirectory: !Sub "/user${UserNumber}"
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        - Name: vscode-server
+          Image: codercom/code-server:4.106.3
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8888
+              Protocol: tcp
+          Environment:
+            - Name: PASSWORD
+              Value: !Ref DefaultPassword
+          Command:
+            - "--bind-addr"
+            - "0.0.0.0:8888"
+            - "--auth"
+            - "password"
+            - "--config-dir"
+            - "/config"
+            - "--user-data-dir"
+            - "/userdata"
+            - "--extensions-dir"
+            - "/extensions"
+            - "/workspace"
+          MountPoints:
+            - SourceVolume: efs-volume
+              ContainerPath: /workspace
+              ReadOnly: false
+            - SourceVolume: efs-volume
+              ContainerPath: /config
+              ReadOnly: false
+            - SourceVolume: efs-volume
+              ContainerPath: /userdata
+              ReadOnly: false
+            - SourceVolume: efs-volume
+              ContainerPath: /extensions
+              ReadOnly: false
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref VSCodeLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Sub 'user${UserNumber}'
+
+  # Target Group
+  UserTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-User${UserNumber}-TG"
+      VpcId: !Ref VPCId
+      Protocol: HTTP
+      Port: 8888
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200,302
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-User${UserNumber}-TG'
+
+  # ECS Service
+  UserService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub '${AWS::StackName}-user${UserNumber}-service'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref VSCodeTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+          AssignPublicIp: DISABLED
+      LoadBalancers:
+        - ContainerName: vscode-server
+          ContainerPort: 8888
+          TargetGroupArn: !Ref UserTargetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-User${UserNumber}-Service'
+
+  # ALB Listener Rule
+  UserListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref PublicALBListener
+      Priority: !Ref UserNumber
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - !Sub "/user${UserNumber}*"
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Custom-Secret
+            Values:
+              - !Ref CustomHeaderSecret
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref UserTargetGroup
+
+Outputs:
+  UserTargetGroup:
+    Description: Target Group ARN for this user
+    Value: !Ref UserTargetGroup
+    
+  UserService:
+    Description: ECS Service Name for this user
+    Value: !Ref UserService
+    
+  UserURL:
+    Description: URL for this user
+    Value: !Sub "/user${UserNumber}"
