@@ -152,16 +152,18 @@ choose_max_tokens() {
 choose_anthropic_model() {
     echo "" >&2
     echo "  기본 모델 선택:" >&2
-    echo "    1) Opus 4.7   (claude-opus-4-7) (기본값)" >&2
-    echo "    2) Opus 4.6   (claude-opus-4-6)" >&2
-    echo "    3) Sonnet 4.6 (claude-sonnet-4-6)" >&2
+    echo "    1) Opus 4.8   (claude-opus-4-8) (기본값)" >&2
+    echo "    2) Opus 4.7   (claude-opus-4-7)" >&2
+    echo "    3) Opus 4.6   (claude-opus-4-6)" >&2
+    echo "    4) Sonnet 4.6 (claude-sonnet-4-6)" >&2
     read -p "  선택 [1]: " MODEL_CHOICE
     MODEL_CHOICE="${MODEL_CHOICE:-1}"
 
     case "$MODEL_CHOICE" in
-        2) echo "claude-opus-4-6" ;;
-        3) echo "claude-sonnet-4-6" ;;
-        *) echo "claude-opus-4-7" ;;
+        2) echo "claude-opus-4-7" ;;
+        3) echo "claude-opus-4-6" ;;
+        4) echo "claude-sonnet-4-6" ;;
+        *) echo "claude-opus-4-8" ;;
     esac
 }
 
@@ -329,16 +331,18 @@ setup_bedrock() {
     # 모델 선택
     echo ""
     echo "  기본 모델 선택:"
-    echo "    1) Opus 4.7   (global.anthropic.claude-opus-4-7) (기본값)"
-    echo "    2) Opus 4.6   (global.anthropic.claude-opus-4-6-v1)"
-    echo "    3) Sonnet 4.6 (global.anthropic.claude-sonnet-4-6)"
+    echo "    1) Opus 4.8   (global.anthropic.claude-opus-4-8) (기본값)"
+    echo "    2) Opus 4.7   (global.anthropic.claude-opus-4-7)"
+    echo "    3) Opus 4.6   (global.anthropic.claude-opus-4-6-v1)"
+    echo "    4) Sonnet 4.6 (global.anthropic.claude-sonnet-4-6)"
     read -p "  선택 [1]: " BRK_MODEL_CHOICE
     BRK_MODEL_CHOICE="${BRK_MODEL_CHOICE:-1}"
 
     case "$BRK_MODEL_CHOICE" in
-        2) BRK_MODEL="global.anthropic.claude-opus-4-6-v1" ;;
-        3) BRK_MODEL="global.anthropic.claude-sonnet-4-6" ;;
-        *) BRK_MODEL="global.anthropic.claude-opus-4-7" ;;
+        2) BRK_MODEL="global.anthropic.claude-opus-4-7" ;;
+        3) BRK_MODEL="global.anthropic.claude-opus-4-6-v1" ;;
+        4) BRK_MODEL="global.anthropic.claude-sonnet-4-6" ;;
+        *) BRK_MODEL="global.anthropic.claude-opus-4-8" ;;
     esac
 
     local max_tokens
@@ -353,7 +357,7 @@ export ANTHROPIC_API_KEY='${BRK_API_KEY}'
 export AWS_BEARER_TOKEN_BEDROCK='${BRK_BEARER}'
 export CLAUDE_CODE_USE_BEDROCK=1
 export ANTHROPIC_MODEL='${BRK_MODEL}'
-export ANTHROPIC_DEFAULT_OPUS_MODEL='global.anthropic.claude-opus-4-7'
+export ANTHROPIC_DEFAULT_OPUS_MODEL='global.anthropic.claude-opus-4-8'
 export ANTHROPIC_DEFAULT_SONNET_MODEL='global.anthropic.claude-sonnet-4-6'
 export ANTHROPIC_DEFAULT_HAIKU_MODEL='global.anthropic.claude-haiku-4-5-20251001-v1:0'
 export ANTHROPIC_SMALL_FAST_MODEL='us.anthropic.claude-haiku-4-5-20251001-v1:0'
