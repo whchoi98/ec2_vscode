@@ -82,7 +82,7 @@ cat > "$TEMP_FILE" << EOF
     },
     {
         "name": "ANTHROPIC_MODEL",
-        "value": "global.anthropic.claude-opus-4-7"
+        "value": "global.anthropic.claude-opus-4-8"
     },
     {
       "name": "ANTHROPIC_SMALL_FAST_MODEL",
@@ -90,7 +90,7 @@ cat > "$TEMP_FILE" << EOF
     },
     {
       "name" : "CLAUDE_CODE_SUBAGENT_MODEL",
-      "value": "global.anthropic.claude-opus-4-7"
+      "value": "global.anthropic.claude-opus-4-8"
     },
     {
       "name" : "MAX_THINKING_TOKENS",
@@ -107,7 +107,7 @@ cat > "$TEMP_FILE" << EOF
     ],
     "claudeCode.disableLoginPrompt": true,
     "claudeCode.preferredLocation": "panel",
-    "claudeCode.selectedModel": "global.anthropic.claude-opus-4-7"
+    "claudeCode.selectedModel": "global.anthropic.claude-opus-4-8"
 }
 EOF
 

@@ -251,7 +251,7 @@ bash 06-switch-mode.sh setup        # 전체 프로필 재설정
 | `CLAUDE_CODE_USE_BEDROCK` | (해제) | (해제) | `1` |
 | `AWS_BEARER_TOKEN_BEDROCK` | (해제) | (해제) | AWS Bearer Token |
 | `ANTHROPIC_MODEL` | (기본값 사용) | (기본값 사용) | `global.anthropic.claude-*` |
-| 모델 ID 형식 | `claude-opus-4-7` 등 | `claude-opus-4-7` 등 | `global.anthropic.claude-opus-4-7` 등 |
+| 모델 ID 형식 | `claude-opus-4-8` 등 | `claude-opus-4-8` 등 | `global.anthropic.claude-opus-4-8` 등 |
 | `ENABLE_PROMPT_CACHING_1H` | 자동 (설정 불필요) | `1` | `1` |
 
 **전환 후 반드시:**
