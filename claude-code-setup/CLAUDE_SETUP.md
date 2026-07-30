@@ -301,6 +301,36 @@ bash 07-setup-aws-skills.sh
 
 ---
 
+## 08-setup-claude-hud.sh
+
+[claude-hud](https://github.com/jarrodwatts/claude-hud) 플러그인을 설치하고 statusLine HUD를 구성합니다. 대화형 `/claude-hud:setup`이 수행하는 작업을 비대화형으로 재현합니다.
+
+**실행:**
+```bash
+bash 08-setup-claude-hud.sh
+```
+
+**동작:**
+1. `jarrodwatts/claude-hud` 마켓플레이스 등록 + `claude-hud` 플러그인 설치
+2. 런타임(bun 우선, node 폴백) 자동 감지 — bun은 `src/index.ts`, node는 `dist/index.js`
+3. `~/.claude/settings.json`에 statusLine 명령 기록 (기존 설정 보존 + 타임스탬프 백업)
+4. `~/.claude/plugins/claude-hud/config.json`에 확장 표시 기능 활성화
+5. 생성 명령 실행 테스트로 검증
+
+**활성화되는 확장 기능:**
+
+| 기능 | config 키 |
+|------|-----------|
+| Tools activity | `display.showTools` |
+| Agents & Todos | `display.showAgents`, `display.showTodos` |
+| Session info | `display.showDuration`, `display.showConfigCounts` |
+| Session name | `display.showSessionName` |
+
+> statusLine 명령은 실행 시점에 최신 설치 버전을 동적 탐색하므로, 플러그인 업데이트 후 재실행이 불필요합니다.
+> 설정 적용에는 **Claude Code 재시작**이 필요합니다.
+
+---
+
 ## 빠른 시작 (전체 흐름)
 
 ```bash
@@ -326,7 +356,10 @@ bash 06-switch-mode.sh
 # 7. AWS Skills 36개 설치
 bash 07-setup-aws-skills.sh
 
-# 8. Claude Code 세션에서 프로젝트 초기화
+# 8. claude-hud statusLine HUD 설치/설정 (선택)
+bash 08-setup-claude-hud.sh
+
+# 9. Claude Code 세션에서 프로젝트 초기화
 claude
 # 세션 내에서: /init-project ./my-project
 ```

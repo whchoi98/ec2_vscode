@@ -36,7 +36,7 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 | AWS CLI | v2 (latest) |
 | Node.js | 20 (nodesource + fnm fallback) |
 | Python3 + pip | boto3, click, bedrock-agentcore |
-| code-server | v4.110.0 |
+| code-server | v4.126.0 |
 | Claude Code CLI | latest (@anthropic-ai/claude-code) |
 | Claude Code Extension | Anthropic.claude-code (Open VSX) |
 | Kiro CLI | latest |
@@ -67,14 +67,19 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 │   ├── 03-setup-plugins-and-mcp.sh #  플러그인 + MCP 서버 설치
 │   ├── 04-update-claude.sh       #   Claude Code 업데이트
 │   ├── 05-setup-custom-plugin.sh #   커스텀 플러그인 설치
+│   ├── 06-switch-mode.sh         #   구독형 ↔ Bedrock API 모드 전환
+│   ├── 07-setup-aws-skills.sh    #   AWS 스킬 36개 설치
+│   ├── 08-setup-claude-hud.sh    #   claude-hud statusLine HUD 설치/설정
 │   ├── mcp-toggle.sh             #   MCP 서버 ON/OFF TUI
 │   └── CLAUDE_SETUP.md           #   상세 설정 가이드
 │
 ├── kiro-cli-setup/              # VSCode Server 내 Kiro CLI 환경 설정
-│   ├── 01-setup-bedrock-env.sh   #   Bedrock 환경변수 설정
-│   ├── 02-setup-mcp-servers.sh   #   MCP 서버 설정 (mcp.json)
-│   ├── 03-update-kiro.sh        #   Kiro CLI 업데이트
-│   └── KIRO_SETUP.md            #   상세 설정 가이드
+│   ├── 01-setup-auth.sh          #   브라우저/디바이스 플로우 인증
+│   ├── 02-setup-model.sh         #   기본 모델 선택 (auto/Claude/서드파티)
+│   ├── 03-setup-mcp-servers.sh   #   MCP 서버 설정 (mcp.json)
+│   ├── 04-update-kiro.sh         #   Kiro CLI 업데이트
+│   ├── 05-install-skills.sh      #   Kiro CLI 스킬 설치 (36개)
+│   └── KIRO_SETUP.md             #   상세 설정 가이드
 │
 ├── templates/                    # 대체 CloudFormation 템플릿
 │   ├── ec2vscode.yaml            #   기본 VPC 단순 배포
@@ -260,6 +265,12 @@ bash claude-code-setup/04-update-claude.sh
 
 # 5. 커스텀 플러그인 설치 (선택)
 bash claude-code-setup/05-setup-custom-plugin.sh
+
+# 6. AWS 스킬 36개 설치 (선택)
+bash claude-code-setup/07-setup-aws-skills.sh
+
+# 7. claude-hud statusLine HUD 설치/설정 (선택)
+bash claude-code-setup/08-setup-claude-hud.sh
 ```
 
 ### 스크립트 목록
@@ -268,11 +279,28 @@ bash claude-code-setup/05-setup-custom-plugin.sh
 |------|---------|------|
 | 01 | `01-setup-bedrock-env.sh` | Bedrock 환경변수 (~/.bashrc) 설정 |
 | 02 | `02-setup-vscode-settings.sh` | VS Code Extension (code-server) 설정 |
-| 03 | `03-setup-plugins-and-mcp.sh` | 플러그인 26개 + AWS MCP 서버 3개 설치 |
+| 03 | `03-setup-plugins-and-mcp.sh` | 플러그인 49개(공식 48개 + AWS 1개) + AWS MCP 서버 3개 설치 |
 | 04 | `04-update-claude.sh` | Claude Code CLI 업데이트 |
 | 05 | `05-setup-custom-plugin.sh` | 커스텀 플러그인 (project-init) 설치 |
 | 06 | `06-switch-mode.sh` | 구독형 ↔ Bedrock API 모드 전환 |
+| 07 | `07-setup-aws-skills.sh` | AWS 스킬 36개 설치 (~/.claude/skills) |
+| 08 | `08-setup-claude-hud.sh` | claude-hud 플러그인 설치 + statusLine HUD 설정 (~/.claude/settings.json) |
 | - | `mcp-toggle.sh` | MCP 서버 ON/OFF 인터랙티브 TUI |
+
+### claude-hud HUD 화면 예시
+
+`08-setup-claude-hud.sh` 실행 후 Claude Code를 재시작하면 입력창 아래에 HUD가 표시됩니다.
+
+![claude-hud statusLine HUD 예시](doc/claude-hud.png)
+
+기본으로 모델명·git 브랜치·컨텍스트 사용률이 표시되고, `08-setup-claude-hud.sh`가 켜는 확장 항목이 함께 나타납니다:
+
+- **세션 이름** — `/rename`으로 지정한 제목 또는 자동 생성된 세션 슬러그
+- 세션 경과 시간(⏱)과 MCP 개수
+- 실행한 도구 활동 (예: `✓ Bash ×10`, `✓ Edit ×5`)
+- 서브에이전트·Todo 진행률
+
+각 항목은 해당 데이터가 있을 때 표시됩니다.
 
 ## Kiro CLI 설정
 
@@ -282,21 +310,36 @@ VSCode Server 배포 후 Kiro CLI 환경을 설정하기 위한 스크립트입�
 ### 빠른 시작
 
 ```bash
-# 1. Bedrock 환경변수 설정
-bash kiro-cli-setup/01-setup-bedrock-env.sh
-source ~/.bashrc
+# 1. 인증 (브라우저 / 디바이스 플로우 로그인)
+bash kiro-cli-setup/01-setup-auth.sh
+#    원격 서버(SSH)에서는 아래 명령으로 디바이스 플로우 로그인 권장:
+#    kiro-cli login --use-device-flow
 
-# 2. MCP 서버 설정
-bash kiro-cli-setup/02-setup-mcp-servers.sh
+# 2. 기본 모델 설정 (auto / Claude Opus·Sonnet·Haiku / 서드파티)
+bash kiro-cli-setup/02-setup-model.sh
 
-# 3. Kiro CLI 업데이트 (선택)
-bash kiro-cli-setup/03-update-kiro.sh
+# 3. MCP 서버 설정
+bash kiro-cli-setup/03-setup-mcp-servers.sh
+
+# 4. Kiro CLI 업데이트 (선택)
+bash kiro-cli-setup/04-update-kiro.sh
+
+# 5. Kiro CLI 스킬 설치 (선택)
+bash kiro-cli-setup/05-install-skills.sh
 ```
 
 ### 스크립트 목록
 
 | 순서 | 스크립트 | 설명 |
 |------|---------|------|
-| 01 | `01-setup-bedrock-env.sh` | Bedrock 환경변수 (~/.bashrc) 설정 |
-| 02 | `02-setup-mcp-servers.sh` | MCP 서버 3개 설정 (~/.kiro/settings/mcp.json) |
-| 03 | `03-update-kiro.sh` | Kiro CLI 업데이트 (ARM64/x86_64 자동 감지) |
+| 01 | `01-setup-auth.sh` | 브라우저 기반 인증 (IAM Identity Center / Builder ID / GitHub 등). 원격 서버는 `kiro-cli login --use-device-flow` 사용 |
+| 02 | `02-setup-model.sh` | 기본 모델 선택 (`auto` 기본값, Claude Opus/Sonnet/Haiku, 서드파티 모델) |
+| 03 | `03-setup-mcp-servers.sh` | MCP 서버 2개 설정 (~/.kiro/settings/mcp.json) — Terraform, Bedrock AgentCore |
+| 04 | `04-update-kiro.sh` | Kiro CLI 업데이트 (ARM64/x86_64 자동 감지) |
+| 05 | `05-install-skills.sh` | Kiro CLI 스킬 36개 설치 (`--local`로 프로젝트 단위 설치 가능) |
+
+> **인증 방식 변경**: Kiro CLI는 Bedrock 베어러 토큰 환경변수가 아니라 브라우저/디바이스 플로우 로그인을 사용합니다.
+>
+> **MCP 서버 2개**: AWS API·Cost Explorer·Pricing·Diagram 도구는 Kiro CLI에 빌트인되어 있어 `core-mcp-server`가 불필요합니다. Terraform·Bedrock AgentCore MCP 서버만 등록됩니다.
+>
+> **스킬**: 설치 후 `kiro-cli chat --agent powers`로 스킬이 포함된 `powers` 에이전트를 사용하거나, 채팅 중 `/agent powers`로 전환할 수 있습니다. 기본 에이전트로 지정하려면 `kiro-cli settings chat.defaultAgent powers`.
