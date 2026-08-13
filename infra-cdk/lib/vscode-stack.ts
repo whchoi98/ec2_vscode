@@ -158,8 +158,10 @@ export class VscodeStack extends cdk.Stack {
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
         iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('ServiceQuotasReadOnlyAccess'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSageMakerReadOnly'),
       ],
-      description: 'VSCode Server EC2 role - SSM + CloudWatch',
+      description: 'VSCode Server EC2 role - SSM, CloudWatch, quotas, and SageMaker read access',
     });
 
     // -------------------------------------------------------

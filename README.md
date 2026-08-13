@@ -190,6 +190,8 @@ CDK 배포 시 EC2 인스턴스에 다음 IAM Role이 생성됩니다.
 |------|------|
 | `AmazonSSMManagedInstanceCore` | SSM Session Manager 접속 |
 | `CloudWatchAgentServerPolicy` | CloudWatch 모니터링 및 로그 수집 |
+| `ServiceQuotasReadOnlyAccess` | 서비스 쿼터와 증액 요청 상태 조회 |
+| `AmazonSageMakerReadOnly` | SageMaker 학습 작업, 모델, 엔드포인트 조회 |
 
 **AdministratorAccess 추가 (전체 권한):**
 
