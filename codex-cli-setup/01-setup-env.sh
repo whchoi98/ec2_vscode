@@ -10,7 +10,7 @@ echo
 # Provider 선택
 echo "API Provider를 선택하세요:"
 echo "  1) OpenAI API (OPENAI_API_KEY)"
-echo "  2) Amazon Bedrock (OPENAI_BASE_URL + AWS 인증)"
+echo "  2) Amazon Bedrock (Bedrock 엔드포인트 + Bedrock API 키)"
 echo "  3) 기타 OpenAI-compatible (커스텀 Base URL)"
 echo
 read -p "선택 (1-3, 기본값: 1): " PROVIDER_CHOICE
@@ -33,30 +33,39 @@ esac
 echo
 
 # Provider별 설정
+# OPENAI_API_KEY는 공통 환경변수 이름이며, 선택한 Provider에서 발급한 키를 저장합니다.
 if [ "$PROVIDER" = "openai" ]; then
-    read -p "OPENAI_API_KEY 값을 입력하세요: " API_KEY
+    read -r -s -p "OpenAI Platform에서 발급한 API 키 (필수, 입력 내용 숨김): " API_KEY
+    echo
     if [ -z "$API_KEY" ]; then
-        echo "오류: OPENAI_API_KEY 값이 비어있습니다."
+        echo "오류: OpenAI API 키가 비어있습니다."
         exit 1
     fi
 
 elif [ "$PROVIDER" = "bedrock" ]; then
-    read -p "OPENAI_BASE_URL (Bedrock 프록시 URL)을 입력하세요: " BASE_URL
+    read -r -p "OPENAI_BASE_URL (Bedrock 엔드포인트 URL)을 입력하세요: " BASE_URL
     if [ -z "$BASE_URL" ]; then
         echo "오류: OPENAI_BASE_URL 값이 비어있습니다."
         exit 1
     fi
-    read -p "OPENAI_API_KEY (Bedrock 인증 키, 없으면 Enter): " API_KEY
+    echo "OPENAI_API_KEY는 환경변수 이름이며, 이 모드에서는 Amazon Bedrock API 키를 저장합니다."
+    read -r -s -p "Amazon Bedrock에서 발급한 API 키 (필수, 입력 내용 숨김): " API_KEY
+    echo
+    if [ -z "$API_KEY" ]; then
+        echo "오류: Amazon Bedrock API 키가 비어있습니다."
+        exit 1
+    fi
 
 elif [ "$PROVIDER" = "custom" ]; then
-    read -p "OPENAI_BASE_URL을 입력하세요: " BASE_URL
+    read -r -p "OPENAI_BASE_URL (커스텀 Provider 엔드포인트 URL)을 입력하세요: " BASE_URL
     if [ -z "$BASE_URL" ]; then
         echo "오류: OPENAI_BASE_URL 값이 비어있습니다."
         exit 1
     fi
-    read -p "OPENAI_API_KEY 값을 입력하세요: " API_KEY
+    read -r -s -p "커스텀 Provider에서 발급한 API 키 (필수, 입력 내용 숨김): " API_KEY
+    echo
     if [ -z "$API_KEY" ]; then
-        echo "오류: OPENAI_API_KEY 값이 비어있습니다."
+        echo "오류: 커스텀 Provider API 키가 비어있습니다."
         exit 1
     fi
 fi
