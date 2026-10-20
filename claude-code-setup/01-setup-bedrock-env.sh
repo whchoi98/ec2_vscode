@@ -40,39 +40,54 @@ fi
 # ANTHROPIC_MODEL 선택
 echo
 echo "사용할 모델을 선택하세요:"
-echo "  1) Opus 5      (global.anthropic.claude-opus-5)"
-echo "  2) Opus 4.8    (global.anthropic.claude-opus-4-8)"
-echo "  3) Opus 4.7    (global.anthropic.claude-opus-4-7)"
-echo "  4) Opus 4.6    (global.anthropic.claude-opus-4-6-v1)"
-echo "  5) Sonnet 5    (global.anthropic.claude-sonnet-5)"
-echo "  6) Sonnet 4.6  (global.anthropic.claude-sonnet-4-6)"
+echo "  1) Opus 5.5    (global.anthropic.claude-opus-5-5)"
+echo "  2) Fable 5.1   (global.anthropic.claude-fable-5-1) (최고 성능, 고비용)"
+echo "  3) Sonnet 5.5  (global.anthropic.claude-sonnet-5-5)"
+echo "  4) Opus 5      (global.anthropic.claude-opus-5)"
+echo "  5) Opus 4.8    (global.anthropic.claude-opus-4-8)"
+echo "  6) Opus 4.7    (global.anthropic.claude-opus-4-7)"
+echo "  7) Opus 4.6    (global.anthropic.claude-opus-4-6-v1)"
+echo "  8) Sonnet 5    (global.anthropic.claude-sonnet-5)"
+echo "  9) Sonnet 4.6  (global.anthropic.claude-sonnet-4-6)"
 echo
-read -p "선택 (1-6, 기본값: 1): " MODEL_CHOICE
+read -p "선택 (1-9, 기본값: 1): " MODEL_CHOICE
 
 case "$MODEL_CHOICE" in
     2)
+        SELECTED_MODEL="global.anthropic.claude-fable-5-1"
+        echo "선택된 모델: Fable 5.1"
+        ;;
+    3)
+        SELECTED_MODEL="global.anthropic.claude-sonnet-5-5"
+        echo "선택된 모델: Sonnet 5.5"
+        ;;
+    4)
+        SELECTED_MODEL="global.anthropic.claude-opus-5"
+        echo "선택된 모델: Opus 5"
+        ;;
+    5)
         SELECTED_MODEL="global.anthropic.claude-opus-4-8"
         echo "선택된 모델: Opus 4.8"
         ;;
-    3)
+    6)
         SELECTED_MODEL="global.anthropic.claude-opus-4-7"
         echo "선택된 모델: Opus 4.7"
         ;;
-    4)
+    7)
         SELECTED_MODEL="global.anthropic.claude-opus-4-6-v1"
         echo "선택된 모델: Opus 4.6"
         ;;
-    5)
+    8)
         SELECTED_MODEL="global.anthropic.claude-sonnet-5"
         echo "선택된 모델: Sonnet 5"
         ;;
-    6)
+    9)
         SELECTED_MODEL="global.anthropic.claude-sonnet-4-6"
         echo "선택된 모델: Sonnet 4.6"
         ;;
     *)
-        SELECTED_MODEL="global.anthropic.claude-opus-5"
-        echo "선택된 모델: Opus 5"
+        SELECTED_MODEL="global.anthropic.claude-opus-5-5"
+        echo "선택된 모델: Opus 5.5"
         ;;
 esac
 
@@ -126,10 +141,10 @@ export ANTHROPIC_API_KEY="${ANTHROPIC_KEY}"
 export AWS_BEARER_TOKEN_BEDROCK='${AWS_TOKEN}'
 export CLAUDE_CODE_USE_BEDROCK=1
 export ANTHROPIC_MODEL='${SELECTED_MODEL}'
-export ANTHROPIC_DEFAULT_OPUS_MODEL='global.anthropic.claude-opus-5'
-export ANTHROPIC_DEFAULT_SONNET_MODEL='global.anthropic.claude-sonnet-5'
-export ANTHROPIC_DEFAULT_HAIKU_MODEL='global.anthropic.claude-haiku-4-5-20251001-v1:0'
-export ANTHROPIC_SMALL_FAST_MODEL='us.anthropic.claude-haiku-4-5-20251001-v1:0'
+export ANTHROPIC_DEFAULT_OPUS_MODEL='global.anthropic.claude-opus-5-5'
+export ANTHROPIC_DEFAULT_SONNET_MODEL='global.anthropic.claude-sonnet-5-5'
+export ANTHROPIC_DEFAULT_HAIKU_MODEL='global.anthropic.claude-haiku-5-5'
+export ANTHROPIC_SMALL_FAST_MODEL='global.anthropic.claude-haiku-5-5'
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=${SELECTED_TOKENS}
 export ENABLE_PROMPT_CACHING_1H=1
 

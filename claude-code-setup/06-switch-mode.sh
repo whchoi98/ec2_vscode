@@ -152,22 +152,28 @@ choose_max_tokens() {
 choose_anthropic_model() {
     echo "" >&2
     echo "  기본 모델 선택:" >&2
-    echo "    1) Opus 5     (claude-opus-5) (기본값)" >&2
-    echo "    2) Opus 4.8   (claude-opus-4-8)" >&2
-    echo "    3) Opus 4.7   (claude-opus-4-7)" >&2
-    echo "    4) Opus 4.6   (claude-opus-4-6)" >&2
-    echo "    5) Sonnet 5   (claude-sonnet-5)" >&2
-    echo "    6) Sonnet 4.6 (claude-sonnet-4-6)" >&2
+    echo "    1) Opus 5.5   (claude-opus-5-5) (기본값)" >&2
+    echo "    2) Fable 5.1  (claude-fable-5-1) (최고 성능, 고비용)" >&2
+    echo "    3) Sonnet 5.5 (claude-sonnet-5-5)" >&2
+    echo "    4) Opus 5     (claude-opus-5)" >&2
+    echo "    5) Opus 4.8   (claude-opus-4-8)" >&2
+    echo "    6) Opus 4.7   (claude-opus-4-7)" >&2
+    echo "    7) Opus 4.6   (claude-opus-4-6)" >&2
+    echo "    8) Sonnet 5   (claude-sonnet-5)" >&2
+    echo "    9) Sonnet 4.6 (claude-sonnet-4-6)" >&2
     read -p "  선택 [1]: " MODEL_CHOICE
     MODEL_CHOICE="${MODEL_CHOICE:-1}"
 
     case "$MODEL_CHOICE" in
-        2) echo "claude-opus-4-8" ;;
-        3) echo "claude-opus-4-7" ;;
-        4) echo "claude-opus-4-6" ;;
-        5) echo "claude-sonnet-5" ;;
-        6) echo "claude-sonnet-4-6" ;;
-        *) echo "claude-opus-5" ;;
+        2) echo "claude-fable-5-1" ;;
+        3) echo "claude-sonnet-5-5" ;;
+        4) echo "claude-opus-5" ;;
+        5) echo "claude-opus-4-8" ;;
+        6) echo "claude-opus-4-7" ;;
+        7) echo "claude-opus-4-6" ;;
+        8) echo "claude-sonnet-5" ;;
+        9) echo "claude-sonnet-4-6" ;;
+        *) echo "claude-opus-5-5" ;;
     esac
 }
 
@@ -335,22 +341,28 @@ setup_bedrock() {
     # 모델 선택
     echo ""
     echo "  기본 모델 선택:"
-    echo "    1) Opus 5     (global.anthropic.claude-opus-5) (기본값)"
-    echo "    2) Opus 4.8   (global.anthropic.claude-opus-4-8)"
-    echo "    3) Opus 4.7   (global.anthropic.claude-opus-4-7)"
-    echo "    4) Opus 4.6   (global.anthropic.claude-opus-4-6-v1)"
-    echo "    5) Sonnet 5   (global.anthropic.claude-sonnet-5)"
-    echo "    6) Sonnet 4.6 (global.anthropic.claude-sonnet-4-6)"
+    echo "    1) Opus 5.5   (global.anthropic.claude-opus-5-5) (기본값)"
+    echo "    2) Fable 5.1  (global.anthropic.claude-fable-5-1) (최고 성능, 고비용)"
+    echo "    3) Sonnet 5.5 (global.anthropic.claude-sonnet-5-5)"
+    echo "    4) Opus 5     (global.anthropic.claude-opus-5)"
+    echo "    5) Opus 4.8   (global.anthropic.claude-opus-4-8)"
+    echo "    6) Opus 4.7   (global.anthropic.claude-opus-4-7)"
+    echo "    7) Opus 4.6   (global.anthropic.claude-opus-4-6-v1)"
+    echo "    8) Sonnet 5   (global.anthropic.claude-sonnet-5)"
+    echo "    9) Sonnet 4.6 (global.anthropic.claude-sonnet-4-6)"
     read -p "  선택 [1]: " BRK_MODEL_CHOICE
     BRK_MODEL_CHOICE="${BRK_MODEL_CHOICE:-1}"
 
     case "$BRK_MODEL_CHOICE" in
-        2) BRK_MODEL="global.anthropic.claude-opus-4-8" ;;
-        3) BRK_MODEL="global.anthropic.claude-opus-4-7" ;;
-        4) BRK_MODEL="global.anthropic.claude-opus-4-6-v1" ;;
-        5) BRK_MODEL="global.anthropic.claude-sonnet-5" ;;
-        6) BRK_MODEL="global.anthropic.claude-sonnet-4-6" ;;
-        *) BRK_MODEL="global.anthropic.claude-opus-5" ;;
+        2) BRK_MODEL="global.anthropic.claude-fable-5-1" ;;
+        3) BRK_MODEL="global.anthropic.claude-sonnet-5-5" ;;
+        4) BRK_MODEL="global.anthropic.claude-opus-5" ;;
+        5) BRK_MODEL="global.anthropic.claude-opus-4-8" ;;
+        6) BRK_MODEL="global.anthropic.claude-opus-4-7" ;;
+        7) BRK_MODEL="global.anthropic.claude-opus-4-6-v1" ;;
+        8) BRK_MODEL="global.anthropic.claude-sonnet-5" ;;
+        9) BRK_MODEL="global.anthropic.claude-sonnet-4-6" ;;
+        *) BRK_MODEL="global.anthropic.claude-opus-5-5" ;;
     esac
 
     local max_tokens
@@ -365,10 +377,10 @@ export ANTHROPIC_API_KEY='${BRK_API_KEY}'
 export AWS_BEARER_TOKEN_BEDROCK='${BRK_BEARER}'
 export CLAUDE_CODE_USE_BEDROCK=1
 export ANTHROPIC_MODEL='${BRK_MODEL}'
-export ANTHROPIC_DEFAULT_OPUS_MODEL='global.anthropic.claude-opus-5'
-export ANTHROPIC_DEFAULT_SONNET_MODEL='global.anthropic.claude-sonnet-5'
-export ANTHROPIC_DEFAULT_HAIKU_MODEL='global.anthropic.claude-haiku-4-5-20251001-v1:0'
-export ANTHROPIC_SMALL_FAST_MODEL='us.anthropic.claude-haiku-4-5-20251001-v1:0'
+export ANTHROPIC_DEFAULT_OPUS_MODEL='global.anthropic.claude-opus-5-5'
+export ANTHROPIC_DEFAULT_SONNET_MODEL='global.anthropic.claude-sonnet-5-5'
+export ANTHROPIC_DEFAULT_HAIKU_MODEL='global.anthropic.claude-haiku-5-5'
+export ANTHROPIC_SMALL_FAST_MODEL='global.anthropic.claude-haiku-5-5'
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=${max_tokens}
 export ENABLE_PROMPT_CACHING_1H=1
 EOF

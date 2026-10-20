@@ -68,7 +68,7 @@ bash 01-setup-bedrock-env.sh
 **대화형 입력 항목:**
 - `ANTHROPIC_API_KEY` - Anthropic API 키
 - `AWS_BEARER_TOKEN_BEDROCK` - AWS Bearer Token
-- 모델 선택 (Opus 5 / Opus 4.8 / Opus 4.7 / Opus 4.6 / Sonnet 5 / Sonnet 4.6)
+- 모델 선택 (Opus 5.5 (기본값) / Fable 5.1 / Sonnet 5.5 / Opus 5 / Opus 4.8 / Opus 4.7 / Opus 4.6 / Sonnet 5 / Sonnet 4.6)
 - Max Output Tokens 선택 (4096 / 16384 / 32768)
 
 **설정되는 환경변수:**
@@ -77,10 +77,10 @@ ANTHROPIC_API_KEY
 AWS_BEARER_TOKEN_BEDROCK
 CLAUDE_CODE_USE_BEDROCK=1
 ANTHROPIC_MODEL                    # 선택한 모델
-ANTHROPIC_DEFAULT_OPUS_MODEL       # global.anthropic.claude-opus-5
-ANTHROPIC_DEFAULT_SONNET_MODEL     # global.anthropic.claude-sonnet-5
-ANTHROPIC_DEFAULT_HAIKU_MODEL      # global.anthropic.claude-haiku-4-5-20251001-v1:0
-ANTHROPIC_SMALL_FAST_MODEL         # us.anthropic.claude-haiku-4-5-20251001-v1:0
+ANTHROPIC_DEFAULT_OPUS_MODEL       # global.anthropic.claude-opus-5-5
+ANTHROPIC_DEFAULT_SONNET_MODEL     # global.anthropic.claude-sonnet-5-5
+ANTHROPIC_DEFAULT_HAIKU_MODEL      # global.anthropic.claude-haiku-5-5
+ANTHROPIC_SMALL_FAST_MODEL         # global.anthropic.claude-haiku-5-5 (us. 프로파일은 미국 리전에서만 호출 가능)
 CLAUDE_CODE_MAX_OUTPUT_TOKENS      # 선택한 토큰 수 (기본값: 16384)
 ENABLE_PROMPT_CACHING_1H=1         # 1시간 prompt 캐싱 활성화
 ```
@@ -116,12 +116,13 @@ bash 02-setup-vscode-settings.sh
 
 | 설정 | 값 |
 |------|-----|
-| `ANTHROPIC_MODEL` | `global.anthropic.claude-opus-5` |
-| `ANTHROPIC_SMALL_FAST_MODEL` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
-| `CLAUDE_CODE_SUBAGENT_MODEL` | `global.anthropic.claude-opus-5` |
-| `MAX_THINKING_TOKENS` | `10240` |
+| `ANTHROPIC_MODEL` | `global.anthropic.claude-opus-5-5` |
+| `ANTHROPIC_SMALL_FAST_MODEL` | `global.anthropic.claude-haiku-5-5` |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | `global.anthropic.claude-opus-5-5` |
 | `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `16384` |
 | `ENABLE_PROMPT_CACHING_1H` | `1` |
+
+Effort와 thinking은 별도로 지정하지 않습니다. 모델별 기본값을 사용하며, 필요하면 세션에서 `/effort`로 조정하세요.
 
 **설정 경로:**
 ```
@@ -254,7 +255,7 @@ bash 06-switch-mode.sh setup        # 전체 프로필 재설정
 | `CLAUDE_CODE_USE_BEDROCK` | (해제) | (해제) | `1` |
 | `AWS_BEARER_TOKEN_BEDROCK` | (해제) | (해제) | AWS Bearer Token |
 | `ANTHROPIC_MODEL` | (기본값 사용) | (기본값 사용) | `global.anthropic.claude-*` |
-| 모델 ID 형식 | `claude-opus-5` 등 | `claude-opus-5` 등 | `global.anthropic.claude-opus-5` 등 |
+| 모델 ID 형식 | `claude-opus-5-5` 등 | `claude-opus-5-5` 등 | `global.anthropic.claude-opus-5-5` 등 |
 | `ENABLE_PROMPT_CACHING_1H` | 자동 (설정 불필요) | `1` | `1` |
 
 **전환 후 반드시:**
