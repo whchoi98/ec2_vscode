@@ -342,6 +342,23 @@ if [ -z "$CF_PREFIX_LIST" ] || [ "$CF_PREFIX_LIST" = "None" ]; then
     exit 1
 fi
 
+# IAM Role 이름 (IAM은 전역) / IAM role name (IAM is global across regions)
+STACK_NAME="VscodeServerStack"
+BASE_ROLE_NAME="${STACK_NAME}-VSCode-Role"
+ROLE_NAME_SUFFIX=""
+CURRENT_ROLE=$(aws cloudformation describe-stack-resources --stack-name "$STACK_NAME" --region "$REGION" \
+    --query "StackResources[?ResourceType=='AWS::IAM::Role' && ResourceStatus!='DELETE_COMPLETE'].PhysicalResourceId" \
+    --output text 2>/dev/null | tr '\t' '\n' | grep "^${BASE_ROLE_NAME}" | head -1 || true)
+if [ -n "$CURRENT_ROLE" ]; then
+    # 이 리전 스택 업데이트: 기존 Role 이름 유지 / Updating this region's stack: keep its role name
+    ROLE_NAME_SUFFIX="${CURRENT_ROLE#"$BASE_ROLE_NAME"}"
+elif aws iam get-role --role-name "$BASE_ROLE_NAME" &>/dev/null; then
+    # 다른 리전 스택이 기본 이름 사용 중 / Default name already taken by another region's stack
+    ROLE_NAME_SUFFIX="-${REGION}"
+    echo -e "  ${YELLOW}$BASE_ROLE_NAME 이(가) 다른 리전에서 사용 중 → ${BASE_ROLE_NAME}${ROLE_NAME_SUFFIX} 로 생성합니다.${NC}"
+fi
+ROLE_NAME="${BASE_ROLE_NAME}${ROLE_NAME_SUFFIX}"
+
 # VSCode Password
 VSCODE_PASSWORD="${VSCODE_PASSWORD:-}"
 if [ -z "$VSCODE_PASSWORD" ]; then
@@ -371,6 +388,7 @@ echo "  │  계정 / Account:    $ACCOUNT_ID"
 echo "  │  리전 / Region:     $REGION"
 echo "  │  인스턴스 / Type:   $INSTANCE_TYPE"
 echo "  │  CF Prefix List:    $CF_PREFIX_LIST"
+echo "  │  IAM Role:          $ROLE_NAME"
 if [ -n "$EXISTING_VPC_ID" ]; then
     echo "  │  VPC:               $EXISTING_VPC_ID (기존 / existing)"
 else
@@ -487,12 +505,15 @@ fi
 if [ "$SKIP_VPC_ENDPOINTS" = "true" ]; then
     CDK_CONTEXT="$CDK_CONTEXT -c skipVpcEndpoints=true"
 fi
+if [ -n "$ROLE_NAME_SUFFIX" ]; then
+    CDK_CONTEXT="$CDK_CONTEXT -c roleNameSuffix=$ROLE_NAME_SUFFIX"
+fi
 
 echo ""
 echo -e "  ${CYAN}CDK 배포 중... (5-10분) / Deploying via CDK (5-10 min)...${NC}"
 echo ""
 
-npx cdk deploy VscodeServerStack \
+npx cdk deploy "$STACK_NAME" \
     --parameters InstanceType="$INSTANCE_TYPE" \
     --parameters VSCodePassword="$VSCODE_PASSWORD" \
     --parameters CloudFrontPrefixListId="$CF_PREFIX_LIST" \
@@ -509,7 +530,7 @@ echo ""
 echo -e "${CYAN}결과 파싱 / Parsing outputs...${NC}"
 
 OUTPUTS=$(aws cloudformation describe-stacks \
-    --stack-name VscodeServerStack --region "$REGION" \
+    --stack-name "$STACK_NAME" --region "$REGION" \
     --query "Stacks[0].Outputs" --output json 2>/dev/null || echo "[]")
 
 parse_output() {
@@ -519,13 +540,15 @@ parse_output() {
 CF_URL=$(parse_output "CloudFrontURL")
 INSTANCE_ID=$(parse_output "InstanceId")
 VPC_ID=$(parse_output "VPCId")
+OUT_ROLE_NAME=$(parse_output "EC2RoleName")
+[ "$OUT_ROLE_NAME" != "N/A" ] && ROLE_NAME="$OUT_ROLE_NAME"
 
 echo ""
 echo -e "${GREEN}=================================================================${NC}"
 echo -e "${GREEN}   배포 완료 / Deployment Complete${NC}"
 echo -e "${GREEN}=================================================================${NC}"
 echo ""
-echo "  스택 / Stack:       VscodeServerStack"
+echo "  스택 / Stack:       $STACK_NAME"
 echo "  리전 / Region:      $REGION"
 echo "  계정 / Account:     $ACCOUNT_ID"
 echo "  인스턴스 / Instance: $INSTANCE_ID ($INSTANCE_TYPE)"
@@ -550,7 +573,7 @@ echo -e "  ${BOLD}┌───────────────────�
 echo -e "  ${BOLD}│  EC2 IAM Role                                               │${NC}"
 echo -e "  ${BOLD}├─────────────────────────────────────────────────────────────┤${NC}"
 echo -e "  │                                                             │"
-echo -e "  │  Role: ${GREEN}VscodeServerStack-VSCode-Role${NC}                        │"
+echo -e "  │  Role: ${GREEN}${ROLE_NAME}${NC}"
 echo -e "  │                                                             │"
 echo -e "  │  연결 정책 / Attached policies:                              │"
 echo -e "  │    - AmazonSSMManagedInstanceCore  (SSM 접속)               │"
@@ -558,7 +581,7 @@ echo -e "  │    - CloudWatchAgentServerPolicy   (모니터링)                
 echo -e "  │                                                             │"
 echo -e "  │  ${YELLOW}AdministratorAccess 추가 (전체 권한):${NC}                      │"
 echo -e "  │  aws iam attach-role-policy \\                              │"
-echo -e "  │    --role-name VscodeServerStack-VSCode-Role \\             │"
+echo -e "  │    --role-name ${ROLE_NAME} \\"
 echo -e "  │    --policy-arn arn:aws:iam::aws:policy/AdministratorAccess │"
 echo -e "  │                                                             │"
 echo -e "  ${BOLD}└─────────────────────────────────────────────────────────────┘${NC}"

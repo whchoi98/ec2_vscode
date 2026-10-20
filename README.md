@@ -184,6 +184,8 @@ CDK 배포 시 EC2 인스턴스에 다음 IAM Role이 생성됩니다.
 | Role 이름 | `VscodeServerStack-VSCode-Role` |
 | 사용 주체 | EC2 인스턴스 (VSCode Server) |
 
+> IAM은 전역 서비스입니다. 같은 계정의 다른 리전에 이미 스택이 있어 기본 이름이 사용 중이면 `deploy_vscode.sh`가 리전 접미사를 붙여 생성합니다 (예: `VscodeServerStack-VSCode-Role-us-west-2`). 실제 이름은 스택 출력 `EC2RoleName`에서 확인하세요.
+
 **연결된 정책:**
 
 | 정책 | 용도 |

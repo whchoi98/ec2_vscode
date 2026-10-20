@@ -19,16 +19,20 @@ export class VscodeStack extends cdk.Stack {
     // -------------------------------------------------------
     // Parameters
     // -------------------------------------------------------
+    const arm64InstanceTypes = [
+      't4g.xlarge', 't4g.2xlarge',
+      'm7g.xlarge', 'm7g.2xlarge',
+      'r7g.xlarge', 'r7g.2xlarge',
+    ];
+    const x86InstanceTypes = [
+      't3.large', 't3.xlarge', 't3.2xlarge',
+      'm7i.xlarge', 'm7i.2xlarge',
+    ];
+
     const instanceType = new cdk.CfnParameter(this, 'InstanceType', {
       type: 'String',
       default: 't4g.2xlarge',
-      allowedValues: [
-        't4g.xlarge', 't4g.2xlarge',
-        't3.large', 't3.xlarge', 't3.2xlarge',
-        'm7g.xlarge', 'm7g.2xlarge',
-        'r7g.xlarge', 'r7g.2xlarge',
-        'm7i.xlarge', 'm7i.2xlarge',
-      ],
+      allowedValues: [...arm64InstanceTypes, ...x86InstanceTypes],
       description: 'EC2 instance type for VSCode Server',
     });
 
@@ -152,8 +156,10 @@ export class VscodeStack extends cdk.Stack {
     // -------------------------------------------------------
     // IAM Role for EC2 (SSM + CloudWatch)
     // -------------------------------------------------------
+    // IAM is global: a suffix (e.g. -us-west-2) avoids clashing with the same stack in another region
+    const roleNameSuffix = this.node.tryGetContext('roleNameSuffix') ?? '';
     const ec2Role = new iam.Role(this, 'EC2Role', {
-      roleName: `${this.stackName}-VSCode-Role`,
+      roleName: `${this.stackName}-VSCode-Role${roleNameSuffix}`,
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -165,9 +171,29 @@ export class VscodeStack extends cdk.Stack {
     // -------------------------------------------------------
     // EC2 Instance (Private Subnet)
     // -------------------------------------------------------
+    // AMI architecture follows the InstanceType parameter, resolved at deploy time
+    const isArm64 = new cdk.CfnCondition(this, 'IsArm64Instance', {
+      expression: cdk.Fn.conditionOr(
+        ...arm64InstanceTypes.map((t) => cdk.Fn.conditionEquals(instanceType.valueAsString, t)),
+      ),
+    });
     const al2023Arm64 = ec2.MachineImage.latestAmazonLinux2023({
       cpuType: ec2.AmazonLinuxCpuType.ARM_64,
     });
+    const al2023X86 = ec2.MachineImage.latestAmazonLinux2023({
+      cpuType: ec2.AmazonLinuxCpuType.X86_64,
+    });
+    const al2023: ec2.IMachineImage = {
+      getImage: (scope) => ({
+        imageId: cdk.Token.asString(cdk.Fn.conditionIf(
+          isArm64.logicalId,
+          al2023Arm64.getImage(scope).imageId,
+          al2023X86.getImage(scope).imageId,
+        )),
+        osType: ec2.OperatingSystemType.LINUX,
+        userData: ec2.UserData.forLinux(),
+      }),
+    };
 
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
@@ -327,7 +353,7 @@ export class VscodeStack extends cdk.Stack {
       vpc: this.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       instanceType: new ec2.InstanceType(instanceType.valueAsString),
-      machineImage: al2023Arm64,
+      machineImage: al2023,
       securityGroup: ec2Sg,
       role: ec2Role,
       userData,
@@ -441,6 +467,11 @@ export class VscodeStack extends cdk.Stack {
       value: this.instance.instanceId,
       description: 'VSCode Server EC2 Instance ID',
       exportName: `${this.stackName}-Instance-ID`,
+    });
+
+    new cdk.CfnOutput(this, 'EC2RoleName', {
+      value: ec2Role.roleName,
+      description: 'VSCode Server EC2 IAM Role name',
     });
 
     new cdk.CfnOutput(this, 'PrivateIP', {
