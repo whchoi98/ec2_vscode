@@ -42,28 +42,26 @@ show_release_notes() {
     echo "────────────────────────────────────────"
 }
 
-# npm install 래퍼 (OS별 sudo 처리)
-npm_install_global() {
-    local PACKAGE="$1"
-    if [[ "$(uname)" == "Darwin" ]]; then
-        npm install -g "$PACKAGE"
+# npm 글로벌 명령 래퍼: 글로벌 prefix에 쓰기 권한이 없을 때만 sudo 사용
+# (sudo npm은 root의 npm 설정을 쓰므로, ~/.npmrc prefix가 있으면 다른 위치에 설치됨)
+npm_global() {
+    if [ -w "$(npm prefix -g)" ]; then
+        npm "$@"
     else
-        sudo npm install -g "$PACKAGE"
-    fi
-}
-
-# npm update 래퍼 (OS별 sudo 처리)
-npm_update_global() {
-    local PACKAGE="$1"
-    if [[ "$(uname)" == "Darwin" ]]; then
-        npm update -g "$PACKAGE"
-    else
-        sudo npm update -g "$PACKAGE"
+        sudo npm "$@"
     fi
 }
 
 # 현재 버전 확인
 OLD_VERSION=$(claude --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+
+# 설치 방식 감지: 네이티브(~/.local/share/claude) 또는 npm
+CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
+if [ -n "$CLAUDE_BIN" ] && [[ "$(readlink -f "$CLAUDE_BIN")" == "$HOME/.local/share/claude/"* ]]; then
+    INSTALL_METHOD="native"
+else
+    INSTALL_METHOD="npm"
+fi
 
 # ─────────────────────────────────────────────────
 # --list: 설치 가능한 버전 목록
@@ -127,8 +125,12 @@ if [ "$1" = "--rollback" ]; then
         brew uninstall --cask claude-code
     fi
 
-    echo "v${TARGET_VERSION} 설치 중..."
-    npm_install_global "@anthropic-ai/claude-code@${TARGET_VERSION}"
+    echo "v${TARGET_VERSION} 설치 중... (설치 방식: $INSTALL_METHOD)"
+    if [ "$INSTALL_METHOD" = "native" ]; then
+        claude install --force "$TARGET_VERSION"
+    else
+        npm_global install -g "@anthropic-ai/claude-code@${TARGET_VERSION}"
+    fi
 
     NEW_VERSION=$(claude --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
     echo ""
@@ -137,6 +139,10 @@ if [ "$1" = "--rollback" ]; then
     show_release_notes "$NEW_VERSION"
 
     echo ""
+    if [ "$INSTALL_METHOD" = "native" ]; then
+        echo "⚠️  네이티브 설치는 자동 업데이트되므로 곧 최신 버전으로 돌아갑니다."
+        echo "   버전을 고정하려면 DISABLE_AUTOUPDATER=1 을 설정하세요."
+    fi
     echo "💡 최신 버전으로 복원하려면: $0"
     echo "=== 롤백 완료 ==="
     exit 0
@@ -151,8 +157,11 @@ echo "현재 버전: $OLD_VERSION"
 echo ""
 
 # 업데이트 실행 (npm latest 채널 사용 — brew cask는 stable 채널이라 버전이 느림)
-echo "업데이트 중..."
-if [[ "$(uname)" == "Darwin" ]]; then
+echo "업데이트 중... (설치 방식: $INSTALL_METHOD)"
+if [ "$INSTALL_METHOD" = "native" ]; then
+    # 네이티브 설치: 사용자 홈에 설치되어 sudo 불필요
+    claude update
+elif [[ "$(uname)" == "Darwin" ]]; then
     # macOS: brew cask가 설치되어 있으면 제거 안내 후 npm으로 통일
     if brew list --cask claude-code &>/dev/null; then
         echo "⚠️  brew cask (stable 채널)로 설치되어 있습니다."
@@ -163,17 +172,16 @@ if [[ "$(uname)" == "Darwin" ]]; then
             echo "brew cask 제거 중..."
             brew uninstall --cask claude-code
             echo "npm으로 설치 중..."
-            npm install -g @anthropic-ai/claude-code
+            npm_global install -g @anthropic-ai/claude-code
         else
             echo "brew cask로 업데이트합니다 (stable 채널)..."
             brew upgrade claude-code
         fi
     else
-        npm update -g @anthropic-ai/claude-code
+        npm_global update -g @anthropic-ai/claude-code
     fi
 else
-    # Linux: 글로벌 설치는 sudo 필요
-    sudo npm update -g @anthropic-ai/claude-code
+    npm_global update -g @anthropic-ai/claude-code
 fi
 
 # 업데이트 후 버전 확인
@@ -187,6 +195,11 @@ if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
     echo "ℹ️  이미 최신 버전입니다."
 else
     show_release_notes "$NEW_VERSION"
+fi
+
+if [ "$INSTALL_METHOD" = "npm" ]; then
+    echo ""
+    echo "💡 네이티브 설치로 전환하면 sudo 없이 자동 업데이트됩니다: claude install"
 fi
 
 echo ""

@@ -37,7 +37,7 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 | Node.js | 20 (nodesource + fnm fallback) |
 | Python3 + pip | boto3, click, bedrock-agentcore |
 | code-server | v4.110.0 |
-| Claude Code CLI | latest (@anthropic-ai/claude-code) |
+| Claude Code CLI | latest (네이티브 설치, `~/.local/bin/claude`, sudo 없이 자동 업데이트) |
 | Claude Code Extension | Anthropic.claude-code (Open VSX) |
 | Kiro CLI | latest |
 | Docker | latest |

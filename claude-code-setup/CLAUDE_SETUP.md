@@ -186,9 +186,12 @@ bash 04-update-claude.sh
 ```
 
 **동작:**
-1. 현재 버전 출력
-2. `npm update -g @anthropic-ai/claude-code` 실행
+1. 현재 버전과 설치 방식(네이티브 / npm) 감지
+2. 네이티브: `claude update` 실행 (sudo 불필요)
+   npm: `npm update -g @anthropic-ai/claude-code` 실행 (글로벌 경로에 쓰기 권한이 없을 때만 sudo)
 3. 업데이트 후 버전 출력
+
+`--rollback <버전>`은 네이티브 설치에서 `claude install --force <버전>`을 사용합니다. 네이티브 설치는 자동 업데이트되므로, 버전을 고정하려면 `DISABLE_AUTOUPDATER=1`을 설정하세요.
 
 ---
 

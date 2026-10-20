@@ -362,19 +362,13 @@ Resources:
             echo "WARNING: kiro-cli download failed"
           fi
 
-          # Install Claude Code via npm (retry once on failure)
-          npm install -g @anthropic-ai/claude-code || {
+          # Install Claude Code as ec2-user via the native installer (~/.local/bin, auto-updates without sudo)
+          CLAUDE_INSTALL="set -o pipefail; curl -fsSL https://claude.ai/install.sh | bash"
+          sudo -u ec2-user -H bash -c "$CLAUDE_INSTALL" || {
             echo "[WARN] Claude Code CLI install failed, retrying in 10s..."
             sleep 10
-            npm install -g @anthropic-ai/claude-code || echo "[WARN] Claude Code CLI install failed after retry"
+            sudo -u ec2-user -H bash -c "$CLAUDE_INSTALL" || echo "[WARN] Claude Code CLI install failed after retry"
           }
-
-          # Ensure claude CLI is accessible system-wide (fnm puts global bins outside PATH)
-          NPM_PREFIX="$(npm prefix -g 2>/dev/null)"
-          if [ -n "$NPM_PREFIX" ] && [ -f "$NPM_PREFIX/bin/claude" ] && ! command -v claude &>/dev/null; then
-            ln -sf "$NPM_PREFIX/bin/claude" /usr/local/bin/claude
-            echo "Claude CLI symlinked: $NPM_PREFIX/bin/claude -> /usr/local/bin/claude"
-          fi
 
           # Install Claude Code extension for code-server (Open VSX)
           sudo -u ec2-user /usr/local/bin/code-server --install-extension Anthropic.claude-code || {
