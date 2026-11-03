@@ -45,6 +45,9 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 | CloudWatch Agent | latest |
 | SSM Plugin | latest |
 
+> UserData는 설치 스크립트(`/opt/vscode-bootstrap/setup.sh`)와 `vscode-bootstrap.service`만 만들고, 실제 설치는 이 서비스가 수행합니다. 설치 도중 SSM 패치 등으로 재부팅되어도 완료 표시 파일(`/var/lib/vscode-bootstrap/done`)이 생길 때까지 부팅할 때마다 다시 실행됩니다.
+> 진행 상황 확인: `sudo tail -f /var/log/user-data.log` 또는 `systemctl status vscode-bootstrap`
+
 ## 프로젝트 구조
 
 ```

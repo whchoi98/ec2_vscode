@@ -195,12 +195,18 @@ export class VscodeStack extends cdk.Stack {
       }),
     };
 
-    const userData = ec2.UserData.forLinux();
-    userData.addCommands(
+    // Setup runs from a systemd oneshot unit rather than straight from cloud-init.
+    // cloud-init runs user data once per instance, but an SSM patch association
+    // (AWS-RunPatchBaseline, RebootIfNeeded) can reboot a fresh instance a few
+    // minutes into setup; the script then never resumed, code-server was never
+    // installed and the ALB target stayed unhealthy. The unit re-runs setup.sh on
+    // every boot until it writes the done marker, so each step must be re-runnable.
+    const setupScript = [
       '#!/bin/bash',
       'set -euxo pipefail',
-      'exec > >(tee /var/log/user-data.log) 2>&1',
-      'echo "Starting user-data script at $(date)"',
+      'exec > >(tee -a /var/log/user-data.log) 2>&1',
+      'export HOME=/root',
+      'echo "Starting VSCode Server setup at $(date)"',
       '',
       '# System update',
       'dnf update -y --allowerasing',
@@ -227,12 +233,14 @@ export class VscodeStack extends cdk.Stack {
       '',
       '# AWS CLI v2',
       'ARCH=$(uname -m)',
+      'cd /tmp',
+      'rm -rf aws awscliv2.zip',
       'if [ "$ARCH" = "aarch64" ]; then',
       '  curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o awscliv2.zip',
       'else',
       '  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip',
       'fi',
-      'unzip -q awscliv2.zip && ./aws/install && rm -rf aws awscliv2.zip',
+      'unzip -oq awscliv2.zip && ./aws/install --update && rm -rf aws awscliv2.zip',
       '',
       '# SSM Plugin',
       'if [ "$ARCH" = "aarch64" ]; then',
@@ -257,8 +265,10 @@ export class VscodeStack extends cdk.Stack {
       'else',
       '  CS_PKG="code-server-${CS_VERSION}-linux-amd64"',
       'fi',
+      'rm -rf "${CS_PKG}" "${CS_PKG}.tar.gz"',
       'wget -q "https://github.com/coder/code-server/releases/download/v${CS_VERSION}/${CS_PKG}.tar.gz"',
       'tar -xzf "${CS_PKG}.tar.gz"',
+      'rm -rf /usr/local/lib/code-server',
       'mv "${CS_PKG}" /usr/local/lib/code-server',
       'ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server',
       'rm -f "${CS_PKG}.tar.gz"',
@@ -291,7 +301,7 @@ export class VscodeStack extends cdk.Stack {
       '[Install]',
       'WantedBy=multi-user.target',
       'SVCEOF',
-      'systemctl daemon-reload && systemctl enable code-server && systemctl start code-server',
+      'systemctl daemon-reload && systemctl enable code-server && systemctl restart code-server',
       '',
       '# Kiro CLI',
       'cd /home/ec2-user',
@@ -300,8 +310,9 @@ export class VscodeStack extends cdk.Stack {
       'else',
       '  KIRO_ZIP="kirocli-x86_64-linux.zip"',
       'fi',
+      'rm -rf kirocli kirocli.zip',
       'if curl --proto "=https" --tlsv1.2 -sSf "https://desktop-release.q.us-east-1.amazonaws.com/latest/${KIRO_ZIP}" -o kirocli.zip; then',
-      '  unzip -q kirocli.zip',
+      '  unzip -oq kirocli.zip',
       '  if [ -d "kirocli/bin" ]; then',
       '    chmod +x kirocli/bin/*',
       '    cp kirocli/bin/* /usr/local/bin/',
@@ -332,6 +343,7 @@ export class VscodeStack extends cdk.Stack {
       '}',
       '',
       '# CloudWatch agent',
+      'rm -f amazon-cloudwatch-agent.rpm',
       'if [ "$ARCH" = "aarch64" ]; then',
       '  wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/arm64/latest/amazon-cloudwatch-agent.rpm || true',
       'else',
@@ -340,7 +352,46 @@ export class VscodeStack extends cdk.Stack {
       '[ -f amazon-cloudwatch-agent.rpm ] && rpm -U ./amazon-cloudwatch-agent.rpm || true',
       'rm -f amazon-cloudwatch-agent.rpm',
       '',
+      '# Done: vscode-bootstrap.service is skipped on later boots',
+      'touch /var/lib/vscode-bootstrap/done',
       'echo "VSCode Server setup completed at $(date)"',
+    ];
+
+    const userData = ec2.UserData.forLinux();
+    userData.addCommands(
+      'set -euxo pipefail',
+      'install -d -m 700 /opt/vscode-bootstrap',
+      'install -d -m 755 /var/lib/vscode-bootstrap',
+      '# setup.sh contains the VSCode password: create it root-only',
+      'umask 077',
+      "cat > /opt/vscode-bootstrap/setup.sh <<'SETUP_EOF'",
+      ...setupScript,
+      'SETUP_EOF',
+      'umask 022',
+      'chmod 700 /opt/vscode-bootstrap/setup.sh',
+      "cat > /etc/systemd/system/vscode-bootstrap.service <<'UNIT_EOF'",
+      '[Unit]',
+      'Description=VSCode Server setup (re-runs on each boot until done)',
+      'Wants=network-online.target',
+      'After=network-online.target cloud-final.service',
+      'ConditionPathExists=!/var/lib/vscode-bootstrap/done',
+      'StartLimitIntervalSec=1h',
+      'StartLimitBurst=5',
+      '',
+      '[Service]',
+      'Type=oneshot',
+      'ExecStart=/opt/vscode-bootstrap/setup.sh',
+      'TimeoutStartSec=0',
+      'Restart=on-failure',
+      'RestartSec=60',
+      '',
+      '[Install]',
+      'WantedBy=multi-user.target',
+      'UNIT_EOF',
+      'systemctl daemon-reload',
+      'systemctl enable vscode-bootstrap.service',
+      '# --no-block: the unit is ordered after cloud-final, which is running this script',
+      'systemctl start --no-block vscode-bootstrap.service',
     );
 
     this.instance = new ec2.Instance(this, 'VSCodeServer', {
@@ -380,6 +431,9 @@ export class VscodeStack extends cdk.Stack {
     const listener = this.alb.addListener('Listener80', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
+      // open defaults to true and adds 0.0.0.0/0:80 to albSg, bypassing the
+      // CloudFront origin-facing prefix list rule (ALBIngressFromCloudFront)
+      open: false,
       defaultAction: elbv2.ListenerAction.fixedResponse(403, {
         contentType: 'text/plain',
         messageBody: 'Access Denied',
