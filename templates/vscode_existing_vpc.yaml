@@ -226,10 +226,24 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
+          # Setup runs from a systemd oneshot unit rather than straight from cloud-init.
+          # cloud-init runs user data once per instance, but an SSM patch association
+          # (AWS-RunPatchBaseline, RebootIfNeeded) can reboot a fresh instance a few
+          # minutes into setup; the script then never resumed, code-server was never
+          # installed and the ALB target stayed unhealthy. The unit re-runs setup.sh on
+          # every boot until it writes the done marker, so each step must be re-runnable.
           set -euxo pipefail
+          install -d -m 700 /opt/vscode-bootstrap
+          install -d -m 755 /var/lib/vscode-bootstrap
+          # setup.sh contains the VSCode password: create it root-only
+          umask 077
+          cat > /opt/vscode-bootstrap/setup.sh <<'SETUP_EOF'
+          #!/bin/bash
+          set -euxo pipefail
+          export HOME=/root
 
           # Log all output
-          exec > >(tee /var/log/user-data.log) 2>&1
+          exec > >(tee -a /var/log/user-data.log) 2>&1
 
           echo "Starting user-data script at $(date)"
 
@@ -267,9 +281,11 @@ Resources:
           echo "Node.js version: $(node -v), npm version: $(npm -v)"
 
           # Install AWS CLI v2
+          cd /tmp
+          rm -rf aws awscliv2.zip
           wget "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -O "awscliv2.zip"
-          unzip awscliv2.zip
-          ./aws/install
+          unzip -o awscliv2.zip
+          ./aws/install --update
           rm -rf aws awscliv2.zip
 
           # Install SSM Plugin
@@ -287,8 +303,10 @@ Resources:
 
           # Install code-server v4.126.0
           cd /tmp
+          rm -rf code-server-4.126.0-linux-amd64 code-server-4.126.0-linux-amd64.tar.gz
           if wget https://github.com/coder/code-server/releases/download/v4.126.0/code-server-4.126.0-linux-amd64.tar.gz; then
             tar -xzf code-server-4.126.0-linux-amd64.tar.gz
+            rm -rf /usr/local/lib/code-server
             mv code-server-4.126.0-linux-amd64 /usr/local/lib/code-server
             ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
             rm code-server-4.126.0-linux-amd64.tar.gz
@@ -331,9 +349,10 @@ Resources:
           # Enable and start service
           systemctl daemon-reload
           systemctl enable code-server
-          systemctl start code-server
+          systemctl restart code-server
 
           # Install CloudWatch agent
+          rm -f amazon-cloudwatch-agent.rpm
           wget https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm || echo "[WARN] CloudWatch agent download failed"
           if [ -f amazon-cloudwatch-agent.rpm ]; then
             rpm -U ./amazon-cloudwatch-agent.rpm || echo "[WARN] CloudWatch agent install failed"
@@ -342,10 +361,11 @@ Resources:
 
           # Install kiro-cli
           cd /home/ec2-user
+          rm -rf kirocli kirocli.zip
           if curl --proto '=https' --tlsv1.2 -sSf \
             'https://desktop-release.q.us-east-1.amazonaws.com/latest/kirocli-x86_64-linux.zip' \
             -o 'kirocli.zip'; then
-            unzip -q kirocli.zip
+            unzip -oq kirocli.zip
             if [ -d "kirocli/bin" ]; then
               chmod +x kirocli/bin/*
               cp kirocli/bin/* /usr/local/bin/
@@ -386,6 +406,34 @@ Resources:
           # Signal completion
           echo "VSCode Server installation completed at $(date)" | tee -a /var/log/user-data.log
           echo "VSCode Server installation completed" > /var/log/vscode-setup.log
+          # Done: vscode-bootstrap.service is skipped on later boots
+          touch /var/lib/vscode-bootstrap/done
+          SETUP_EOF
+          umask 022
+          chmod 700 /opt/vscode-bootstrap/setup.sh
+          cat > /etc/systemd/system/vscode-bootstrap.service <<'UNIT_EOF'
+          [Unit]
+          Description=VSCode Server setup (re-runs on each boot until done)
+          Wants=network-online.target
+          After=network-online.target cloud-final.service
+          ConditionPathExists=!/var/lib/vscode-bootstrap/done
+          StartLimitIntervalSec=1h
+          StartLimitBurst=5
+
+          [Service]
+          Type=oneshot
+          ExecStart=/opt/vscode-bootstrap/setup.sh
+          TimeoutStartSec=0
+          Restart=on-failure
+          RestartSec=60
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT_EOF
+          systemctl daemon-reload
+          systemctl enable vscode-bootstrap.service
+          # --no-block: the unit is ordered after cloud-final, which is running this script
+          systemctl start --no-block vscode-bootstrap.service
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-VSCode-Server'
