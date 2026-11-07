@@ -1,0 +1,27 @@
+# 현재 사용자 설정에서 재사용할 수 있는 항목 (2026-11-07, Codex CLI 0.167.0).
+# 01-setup-env.sh는 이 파일을 덮어쓰지 않고 같은 기본값을 기존 설정에 병합합니다.
+# 공급자 설정은 사용자 ~/.codex/config.toml에 저장하세요.
+model = "openai.gpt-6-astra"
+model_provider = "amazon-bedrock"
+model_reasoning_effort = "max"
+model_context_window = 1048576
+service_tier = "default"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+
+[model_providers.amazon-bedrock.aws]
+region = "us-east-1"
+# profile = "development" # 생략하면 EC2 역할 등을 포함한 AWS 기본 인증 체인 사용
+
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "task-progress",
+  "current-dir",
+  "git-branch",
+  "context-used",
+  "five-hour-limit",
+  "weekly-limit",
+  "fast-mode",
+]

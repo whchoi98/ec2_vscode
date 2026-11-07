@@ -79,6 +79,13 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 │   ├── 03-update-kiro.sh        #   Kiro CLI 업데이트
 │   └── KIRO_SETUP.md            #   상세 설정 가이드
 │
+├── codex-cli-setup/             # VSCode Server 내 Codex CLI 환경 설정
+│   ├── 01-setup-env.sh          #   사용자 config.toml 설정 (Bedrock/OpenAI)
+│   ├── 02-setup-mcp-servers.sh  #   AWS MCP 등록 및 이전 mcp.json 병합
+│   ├── 03-update-codex.sh       #   현재 CLI 업데이트 또는 사용자 경로 설치
+│   ├── config.example.toml     #   현재 환경을 기준으로 한 설정 예제
+│   └── CODEX_SETUP.md           #   비교 결과와 상세 설정 가이드
+│
 ├── templates/                    # 대체 CloudFormation 템플릿
 │   ├── ec2vscode.yaml            #   기본 VPC 단순 배포
 │   ├── ec2vscode_ubuntu.yaml     #   Ubuntu 기반
@@ -305,3 +312,28 @@ bash kiro-cli-setup/03-update-kiro.sh
 | 01 | `01-setup-bedrock-env.sh` | Bedrock 환경변수 (~/.bashrc) 설정 |
 | 02 | `02-setup-mcp-servers.sh` | MCP 서버 3개 설정 (~/.kiro/settings/mcp.json) |
 | 03 | `03-update-kiro.sh` | Kiro CLI 업데이트 (ARM64/x86_64 자동 감지) |
+
+## Codex CLI + Amazon Bedrock 설정
+
+현재 사용자 환경의 Codex CLI 0.167.0 설정을 기준으로 한 설치·설정 스크립트입니다.
+기본 예제는 내장 `amazon-bedrock` provider, `openai.gpt-6-astra`, 추론 수준 `max`를 사용합니다.
+기존 사용자 설정이 있으면 모델·MCP·플러그인과 주석을 보존해 병합합니다.
+비교 결과, OpenAI 인증, MCP 마이그레이션은 [codex-cli-setup/CODEX_SETUP.md](codex-cli-setup/CODEX_SETUP.md)를 참조하세요.
+
+```bash
+# 1. CLI 설치 또는 현재 설치본 업데이트
+bash codex-cli-setup/03-update-codex.sh
+source ~/.bashrc
+
+# 2. 모델·실행 설정 (변경 전 확인은 --dry-run 추가)
+bash codex-cli-setup/01-setup-env.sh --yes
+
+# 3. 실행 후 /status에서 provider 확인
+codex
+```
+
+| 스크립트 | 설명 |
+|----------|------|
+| `01-setup-env.sh` | 사용자 `config.toml`의 provider·모델·승인 검토·상태 표시줄 설정 |
+| `02-setup-mcp-servers.sh` | AWS MCP 서버 등록 및 이전 `mcp.json` 병합 (선택) |
+| `03-update-codex.sh` | `codex update` 우선 사용, 신규 설치는 사용자 npm 경로 사용 |
