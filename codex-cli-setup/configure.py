@@ -3,6 +3,7 @@
 
 import argparse
 from collections.abc import MutableMapping
+from copy import deepcopy
 from datetime import datetime, timezone
 import json
 import os
@@ -71,6 +72,36 @@ def choose(label, default, supplied, automatic):
     return input(f"{label}{suffix}: ").strip() or default
 
 
+def merge_missing_settings(document, defaults, path=()):
+    for key, value in defaults.items():
+        if key not in document:
+            document[key] = deepcopy(value)
+        elif (
+            path != ("mcp_servers",)
+            and isinstance(document[key], MutableMapping)
+            and isinstance(value, MutableMapping)
+        ):
+            merge_missing_settings(document[key], value, path + (key,))
+
+
+def include_ec2_settings(document, provider, model):
+    example = Path(__file__).with_name("config.example.toml")
+    defaults = tomlkit.parse(example.read_text(encoding="utf-8"))
+    if provider != defaults.get("model_provider"):
+        defaults.pop("openai_base_url", None)
+    if provider != defaults.get("model_provider") or model != defaults.get("model"):
+        for key in [
+            "model", "model_reasoning_effort", "model_context_window",
+            "model_auto_compact_token_limit", "service_tier",
+        ]:
+            defaults.pop(key, None)
+    if "default_permissions" in document:
+        defaults.pop("sandbox_mode", None)
+        defaults.pop("sandbox_workspace_write", None)
+    merge_missing_settings(document, defaults)
+    print(f"EC2 전체 설정 병합: {example}")
+
+
 def setup(document, args):
     previous_provider = str(document.get("model_provider", "openai"))
     previous_model = str(document.get("model", ""))
@@ -98,6 +129,8 @@ def setup(document, args):
     model = choose("모델 ID", default_model, args.model, args.yes)
     if not model:
         raise ValueError("이 provider에서 사용할 모델 ID를 --model로 지정하세요.")
+    if args.include_ec2_settings:
+        include_ec2_settings(document, provider, model)
     same_model = previous_provider == provider and previous_model == model
     if not same_model:
         for key in ["model_context_window", "model_auto_compact_token_limit", "model_reasoning_effort"]:
@@ -225,6 +258,10 @@ def main():
     parser.add_argument("--config-file", type=Path, default=default_path)
     parser.add_argument("--dry-run", action="store_true", help="파일을 쓰지 않고 변경 계획 확인")
     parser.add_argument("--yes", action="store_true", help="기존 값 또는 기본값을 사용")
+    parser.add_argument(
+        "--include-ec2-settings", action="store_true",
+        help="config.example.toml의 EC2 전체 설정을 기존 값 보존하여 병합 (setup 전용)",
+    )
     parser.add_argument("--provider", help="bedrock, openai, custom 또는 기존 provider ID")
     parser.add_argument("--model")
     parser.add_argument("--region")
@@ -233,6 +270,8 @@ def main():
     parser.add_argument("--approvals-reviewer", choices=["auto_review", "user"])
     parser.add_argument("--base-url")
     args = parser.parse_args()
+    if args.include_ec2_settings and args.operation != "setup":
+        parser.error("--include-ec2-settings는 01-setup-env.sh에서 사용하세요.")
     args.config_file = args.config_file.expanduser().resolve()
     try:
         original = args.config_file.read_text(encoding="utf-8") if args.config_file.exists() else ""

@@ -104,6 +104,75 @@ trust_level = "trusted"
         self.run_setup("--yes", "--dry-run")
         self.assertEqual(list(self.directory.iterdir()), [])
 
+    def test_ec2_settings_include_paths_mcp_plugins_and_terminal_preferences(self):
+        self.run_setup("--yes", "--include-ec2-settings")
+        config = self.read_config()
+        self.assertEqual(
+            config["openai_base_url"],
+            "https://bedrock-mantle.us-east-1.api.aws/openai/v1",
+        )
+        self.assertEqual(config["projects"]["/home/ec2-user/my-project"]["trust_level"], "trusted")
+        self.assertEqual(
+            config["sandbox_workspace_write"]["writable_roots"],
+            ["/home/ec2-user/my-project"],
+        )
+        self.assertEqual(
+            config["mcp_servers"]["seoul-opendata"]["args"],
+            ["/home/ec2-user/my-project/seoul-opendata-mcp/dist/index.js"],
+        )
+        self.assertTrue(config["plugins"]["codex-hud@personal"]["enabled"])
+        self.assertTrue(config["plugins"]["codex-project-init@personal"]["enabled"])
+        self.assertTrue(config["plugins"]["my-workshop@personal"]["enabled"])
+        self.assertTrue(config["tui"]["status_line_use_colors"])
+        self.assertTrue(config["tui"]["screen_reader_detection_done"])
+        self.assertIn("openai.gpt-6-astra", config["tui"]["model_availability_nux"])
+
+    def test_ec2_settings_preserve_existing_mcp_definitions_and_preferences(self):
+        self.config.write_text(
+            '[mcp_servers.seoul-opendata]\n'
+            'command = "custom-server"\n'
+            'enabled = false\n'
+            '[plugins."codex-hud@personal"]\n'
+            'enabled = false\n'
+            '[projects."/home/ec2-user/my-project"]\n'
+            'trust_level = "untrusted"\n'
+            '[sandbox_workspace_write]\n'
+            'writable_roots = ["/work"]\n'
+            '[tui]\n'
+            'status_line_use_colors = false\n'
+        )
+        self.run_setup("--yes", "--include-ec2-settings")
+        config = self.read_config()
+        server = config["mcp_servers"]["seoul-opendata"]
+        self.assertEqual(server["command"], "custom-server")
+        self.assertFalse(server["enabled"])
+        self.assertNotIn("args", server)
+        self.assertFalse(config["plugins"]["codex-hud@personal"]["enabled"])
+        self.assertEqual(config["projects"]["/home/ec2-user/my-project"]["trust_level"], "untrusted")
+        self.assertEqual(config["sandbox_workspace_write"]["writable_roots"], ["/work"])
+        self.assertFalse(config["tui"]["status_line_use_colors"])
+
+    def test_ec2_settings_respect_existing_permission_profiles(self):
+        self.config.write_text('default_permissions = ":read-only"\n')
+        self.run_setup("--yes", "--include-ec2-settings")
+        config = self.read_config()
+        self.assertEqual(config["default_permissions"], ":read-only")
+        self.assertNotIn("sandbox_mode", config)
+        self.assertNotIn("sandbox_workspace_write", config)
+
+    def test_ec2_settings_do_not_redirect_openai_to_bedrock(self):
+        self.run_setup(
+            "--yes", "--include-ec2-settings", "--provider", "openai",
+            "--model", "account-model",
+        )
+        config = self.read_config()
+        self.assertEqual(config["model_provider"], "openai")
+        self.assertEqual(config["model"], "account-model")
+        self.assertNotIn("openai_base_url", config)
+        self.assertNotIn("model_context_window", config)
+        self.assertNotIn("model_reasoning_effort", config)
+        self.assertIn("my-workshop@personal", config["plugins"])
+
     def test_invalid_toml_is_not_overwritten(self):
         original = 'model = "unterminated\n'
         self.config.write_text(original)

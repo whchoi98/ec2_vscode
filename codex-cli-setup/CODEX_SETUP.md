@@ -1,6 +1,6 @@
 # Codex CLI 설정
 
-VSCode Server에서 Codex CLI를 설치하고 사용자 `config.toml`을 구성합니다. 2026-11-07에 이 환경의 Codex CLI 0.167.0과 `~/.codex/config.toml`을 비교해 스크립트를 갱신했습니다.
+VSCode Server에서 Codex CLI를 설치하고 사용자 `config.toml`을 구성합니다. 2026-11-08에 이 EC2의 Codex CLI 0.167.0과 `~/.codex/config.toml`을 확인해, Bedrock 인증 키를 제외한 전체 설정을 예제에 반영했습니다.
 
 ## 비교 결과
 
@@ -17,7 +17,20 @@ VSCode Server에서 Codex CLI를 설치하고 사용자 `config.toml`을 구성�
 
 현재 환경에서 사용하는 Bedrock Mantle 설정을 기본 예제로 제공합니다. 기존 파일에 모델, provider, 승인 정책, 상태 표시줄이 있으면 그 값을 유지합니다. 다른 모델을 선택할 때는 해당 모델이 지원하는 추론 수준과 컨텍스트 크기를 사용하세요. 명시적으로 모델이나 provider를 바꾸면 이전 모델의 강제 컨텍스트 길이와 추론 수준을 제거합니다.
 
-이 환경의 `seoul-opendata` MCP와 `codex-hud@personal`, `codex-project-init@personal`, `my-workshop@personal` 플러그인도 재실행 시 보존합니다. 배포용 예제에는 개인 MCP 경로, 프로젝트 신뢰 목록, 추가 쓰기 허용 경로, 자격 증명을 넣지 않았습니다. 이 스크립트가 개인 플러그인 패키지까지 설치하지는 않습니다.
+[config.example.toml](config.example.toml)에는 이 EC2의 다음 설정이 모두 들어 있습니다.
+
+| 설정 | 포함한 내용 |
+|------|-------------|
+| 모델·provider | `openai.gpt-6-astra`, `amazon-bedrock`, `max`, 컨텍스트 1,048,576, 서비스 등급 `default` |
+| 엔드포인트·리전 | `openai_base_url`의 Bedrock Mantle 주소, `us-east-1` |
+| 승인 검토 | `approvals_reviewer = "auto_review"` |
+| 프로젝트 신뢰 | `/home/ec2-user`와 프로젝트별 경로를 포함한 21개 항목 |
+| TUI | 상태 표시줄 8개 항목, 색상 사용, 화면 읽기 프로그램 감지 상태, 모델 안내 표시 상태 |
+| MCP | `seoul-opendata`의 `node` 명령과 실제 서버 파일 경로 |
+| 추가 쓰기 경로 | `/home/ec2-user/my-project` |
+| 플러그인 | `codex-hud@personal`, `codex-project-init@personal`, `my-workshop@personal` 활성화 |
+
+확인 시점의 `config.toml`에는 Bedrock 키가 직접 저장되어 있지 않았습니다. 예제에도 인증 키를 넣지 않았으며, 별도 인증 파일과 환경변수 값은 복사하지 않습니다.
 
 ## 사전 요구사항
 
@@ -84,7 +97,23 @@ bash codex-cli-setup/01-setup-env.sh --yes --aws-profile ''
 
 `auto_review`는 승인 요청의 검토자를 지정합니다. 샌드박스를 해제하지 않습니다. 기존 `sandbox_mode`와 권한 설정은 유지하며, 새 파일에는 `workspace-write`를 사용합니다. 이미 `default_permissions`를 사용하는 파일에는 충돌하는 `sandbox_mode`를 추가하지 않습니다.
 
-공유 가능한 전체 예제는 [config.example.toml](config.example.toml)에 있습니다. 기존 설정이 있다면 스크립트로 병합하세요. 예제 파일을 그대로 복사하면 기존 MCP와 플러그인 설정을 잃을 수 있습니다.
+기본 실행은 위의 모델·실행 설정을 구성합니다. 예제에 담긴 이 EC2의 전체 설정은 다음 옵션으로 함께 병합할 수 있습니다.
+
+### 이 EC2의 전체 설정 포함
+
+```bash
+# 변경 계획 확인
+bash codex-cli-setup/01-setup-env.sh --yes --include-ec2-settings --dry-run
+
+# 현재 사용자 설정에 누락된 항목 병합
+bash codex-cli-setup/01-setup-env.sh --yes --include-ec2-settings
+```
+
+`--include-ec2-settings`는 `config.example.toml`을 읽어 프로젝트 신뢰 경로, MCP, 플러그인, 추가 쓰기 경로와 TUI 세부 설정까지 병합합니다. 같은 설정이 이미 있으면 기존 값을 유지합니다. 같은 이름의 MCP 서버는 명령과 인자를 하나의 설정으로 보존합니다. 기존 `default_permissions`가 있으면 충돌하는 이전 샌드박스 설정은 추가하지 않습니다.
+
+예제의 `/home/ec2-user/...` 경로는 이 EC2의 실제 경로입니다. 다른 환경에 적용할 때는 예제의 프로젝트·쓰기 허용·MCP 실행 경로를 해당 환경에 맞게 수정하세요. 플러그인과 MCP의 실행 파일도 준비되어 있어야 합니다. 여기서는 해당 프로그램의 설치가 아니라 Codex 설정 등록을 수행합니다.
+
+OpenAI 등 다른 provider를 함께 지정하면 예제의 Bedrock 엔드포인트와 모델별 추론·컨텍스트 설정은 가져오지 않습니다. 기존 파일에 이미 저장된 엔드포인트는 아래 전환 안내에 따라 확인하세요.
 
 ### OpenAI 사용
 

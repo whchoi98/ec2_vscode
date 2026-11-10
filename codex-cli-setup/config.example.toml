@@ -1,27 +1,101 @@
-# 현재 사용자 설정에서 재사용할 수 있는 항목 (2026-11-07, Codex CLI 0.167.0).
-# 01-setup-env.sh는 이 파일을 덮어쓰지 않고 같은 기본값을 기존 설정에 병합합니다.
-# 공급자 설정은 사용자 ~/.codex/config.toml에 저장하세요.
+# 현재 EC2의 ~/.codex/config.toml 전체 설정 (2026-11-08, Codex CLI 0.167.0).
+# Bedrock 인증 키와 기타 자격 증명은 포함하지 않습니다.
+# 01-setup-env.sh --include-ec2-settings 옵션으로 기존 사용자 설정에 병합합니다.
+# 경로는 이 EC2의 실제 값입니다. 다른 환경에서는 프로젝트·MCP·쓰기 허용 경로를 맞추세요.
 model = "openai.gpt-6-astra"
 model_provider = "amazon-bedrock"
+openai_base_url = "https://bedrock-mantle.us-east-1.api.aws/openai/v1"
 model_reasoning_effort = "max"
 model_context_window = 1048576
-service_tier = "default"
-approval_policy = "on-request"
 approvals_reviewer = "auto_review"
-sandbox_mode = "workspace-write"
+service_tier = "default"
 
 [model_providers.amazon-bedrock.aws]
 region = "us-east-1"
-# profile = "development" # 생략하면 EC2 역할 등을 포함한 AWS 기본 인증 체인 사용
+
+[projects."/home/ec2-user"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/my-codex-hud"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/clawd-game"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/stock-monitoring"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/youtube-trends"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/newsroom_lens"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/human-ton"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/codex-project-init"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/jeju-atlas"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/robot-arm"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/my-workshop"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/aws-blog"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/shooting-game"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/my-search"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/claude-code-dashboard"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/model-monitoring"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/agent-ops"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/codex-q-n-a"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/code-assistant-changelog"]
+trust_level = "trusted"
+
+[projects."/home/ec2-user/my-project/ec2_vscode"]
+trust_level = "trusted"
 
 [tui]
-status_line = [
-  "model-with-reasoning",
-  "task-progress",
-  "current-dir",
-  "git-branch",
-  "context-used",
-  "five-hour-limit",
-  "weekly-limit",
-  "fast-mode",
-]
+status_line = ["model-with-reasoning", "task-progress", "current-dir", "git-branch", "context-used", "five-hour-limit", "weekly-limit", "fast-mode"]
+status_line_use_colors = true
+screen_reader_detection_done = true
+
+[tui.model_availability_nux]
+"openai.gpt-6-astra" = 4
+
+[mcp_servers.seoul-opendata]
+command = "node"
+args = ["/home/ec2-user/my-project/seoul-opendata-mcp/dist/index.js"]
+
+[sandbox_workspace_write]
+writable_roots = ["/home/ec2-user/my-project"]
+
+[plugins."codex-hud@personal"]
+enabled = true
+
+[plugins."codex-project-init@personal"]
+enabled = true
+
+[plugins."my-workshop@personal"]
+enabled = true

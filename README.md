@@ -83,7 +83,7 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 │   ├── 01-setup-env.sh          #   사용자 config.toml 설정 (Bedrock/OpenAI)
 │   ├── 02-setup-mcp-servers.sh  #   AWS MCP 등록 및 이전 mcp.json 병합
 │   ├── 03-update-codex.sh       #   현재 CLI 업데이트 또는 사용자 경로 설치
-│   ├── config.example.toml     #   현재 환경을 기준으로 한 설정 예제
+│   ├── config.example.toml     #   현재 EC2 전체 설정 예제 (인증 키 제외)
 │   └── CODEX_SETUP.md           #   비교 결과와 상세 설정 가이드
 │
 ├── templates/                    # 대체 CloudFormation 템플릿
@@ -318,6 +318,8 @@ bash kiro-cli-setup/03-update-kiro.sh
 현재 사용자 환경의 Codex CLI 0.167.0 설정을 기준으로 한 설치·설정 스크립트입니다.
 기본 예제는 내장 `amazon-bedrock` provider, `openai.gpt-6-astra`, 추론 수준 `max`를 사용합니다.
 기존 사용자 설정이 있으면 모델·MCP·플러그인과 주석을 보존해 병합합니다.
+`config.example.toml`에는 인증 키를 제외한 이 EC2의 전체 설정을 담았습니다.
+`--include-ec2-settings`를 추가하면 신뢰 경로 21개, MCP 서버 1개, 플러그인 3개와 TUI·추가 쓰기 경로도 함께 병합합니다.
 비교 결과, OpenAI 인증, MCP 마이그레이션은 [codex-cli-setup/CODEX_SETUP.md](codex-cli-setup/CODEX_SETUP.md)를 참조하세요.
 
 ```bash
@@ -327,6 +329,9 @@ source ~/.bashrc
 
 # 2. 모델·실행 설정 (변경 전 확인은 --dry-run 추가)
 bash codex-cli-setup/01-setup-env.sh --yes
+
+# 이 EC2의 전체 설정도 포함하려면
+bash codex-cli-setup/01-setup-env.sh --yes --include-ec2-settings
 
 # 3. 실행 후 /status에서 provider 확인
 codex
