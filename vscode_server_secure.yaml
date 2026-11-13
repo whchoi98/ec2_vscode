@@ -457,20 +457,32 @@ Resources:
           # Install uv package manager (to /usr/local/bin so uv/uvx are on PATH for all users)
           wget -qO- https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh || echo "[WARN] uv install failed"
           
-          # Install code-server v4.126.0
+          # Install the latest code-server release. The tag comes from the releases/latest
+          # redirect (no GitHub API rate limit); fall back to a known-good version if the
+          # lookup or the download fails. Bash variables avoid ${} here because of !Sub.
           cd /tmp
-          rm -rf code-server-4.126.0-linux-amd64 code-server-4.126.0-linux-amd64.tar.gz
-          if wget https://github.com/coder/code-server/releases/download/v4.126.0/code-server-4.126.0-linux-amd64.tar.gz; then
-            tar -xzf code-server-4.126.0-linux-amd64.tar.gz
-            rm -rf /usr/local/lib/code-server
-            mv code-server-4.126.0-linux-amd64 /usr/local/lib/code-server
-            ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
-            rm code-server-4.126.0-linux-amd64.tar.gz
-            echo "code-server installed successfully"
-          else
-            echo "ERROR: code-server download failed"
-            exit 1
+          CS_FALLBACK_VERSION="4.145.2"
+          CS_VERSION=$(curl -fsSLI -o /dev/null -w "%{url_effective}" https://github.com/coder/code-server/releases/latest | sed -n "s#.*/tag/v##p") || true
+          [[ "$CS_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || CS_VERSION="$CS_FALLBACK_VERSION"
+          cs_download() {
+            CS_PKG="code-server-$1-linux-amd64"
+            rm -rf "$CS_PKG" "$CS_PKG.tar.gz"
+            wget -q "https://github.com/coder/code-server/releases/download/v$1/$CS_PKG.tar.gz"
+          }
+          if ! cs_download "$CS_VERSION"; then
+            echo "[WARN] code-server $CS_VERSION download failed, falling back to $CS_FALLBACK_VERSION"
+            CS_VERSION="$CS_FALLBACK_VERSION"
+            if ! cs_download "$CS_VERSION"; then
+              echo "ERROR: code-server download failed"
+              exit 1
+            fi
           fi
+          tar -xzf "$CS_PKG.tar.gz"
+          rm -rf /usr/local/lib/code-server
+          mv "$CS_PKG" /usr/local/lib/code-server
+          ln -sf /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server
+          rm -f "$CS_PKG.tar.gz"
+          echo "code-server $CS_VERSION installed successfully"
           
           # Configure code-server
           mkdir -p /home/ec2-user/.config/code-server

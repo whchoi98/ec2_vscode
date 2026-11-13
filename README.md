@@ -36,7 +36,7 @@ User ──HTTPS──> CloudFront ──HTTP:80──> ALB (Custom Header) ─�
 | AWS CLI | v2 (latest) |
 | Node.js | 20 (nodesource + fnm fallback) |
 | Python3 + pip | boto3, click, bedrock-agentcore |
-| code-server | v4.110.0 |
+| code-server | latest (설치 시점 최신 릴리스, 조회나 다운로드 실패 시 v4.145.2) |
 | Claude Code CLI | latest (네이티브 설치, `~/.local/bin/claude`, sudo 없이 자동 업데이트) |
 | Claude Code Extension | Anthropic.claude-code (Open VSX) |
 | Kiro CLI | latest |
