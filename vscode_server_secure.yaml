@@ -486,7 +486,8 @@ Resources:
           
           # Configure code-server
           mkdir -p /home/ec2-user/.config/code-server
-          cat > /home/ec2-user/.config/code-server/config.yaml <<EOF
+          # Quoted delimiters: the password is written literally ($ or ` in it is not expanded)
+          cat > /home/ec2-user/.config/code-server/config.yaml <<'EOF'
           bind-addr: 0.0.0.0:8888
           auth: password
           password: "${VSCodePassword}"
@@ -496,7 +497,7 @@ Resources:
           chown -R ec2-user:ec2-user /home/ec2-user/.config
           
           # Create systemd service
-          cat > /etc/systemd/system/code-server.service <<EOF
+          cat > /etc/systemd/system/code-server.service <<'EOF'
           [Unit]
           Description=code-server
           After=network.target
