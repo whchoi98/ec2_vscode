@@ -658,20 +658,6 @@ Resources:
           Port: 8888
 
 ######################################################################
-# Security Group Example (VSCode SG)
-######################################################################
-  VSCodeSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow ALB to access VSCode port
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 8888
-          ToPort: 8888
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
-
-######################################################################
 # Internal ALB for Private-only Access (ALB → EC2:8888)
 ######################################################################
   PrivateALB1: 
