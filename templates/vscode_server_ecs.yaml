@@ -261,7 +261,7 @@ Resources:
       Volumes:
         - Name: efs
           EFSVolumeConfiguration:
-            FileSystemId: !Ref EFS
+            FilesystemId: !Ref EFS
             TransitEncryption: ENABLED
       ContainerDefinitions:
         - Name: vscode

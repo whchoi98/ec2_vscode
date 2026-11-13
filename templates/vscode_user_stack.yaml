@@ -79,7 +79,7 @@ Resources:
       Volumes:
         - Name: efs-volume
           EFSVolumeConfiguration:
-            FileSystemId: !Ref EFSFileSystem
+            FilesystemId: !Ref EFSFileSystem
             RootDirectory: !Sub "/user${UserNumber}"
             TransitEncryption: ENABLED
       ContainerDefinitions:

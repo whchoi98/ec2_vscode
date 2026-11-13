@@ -256,7 +256,6 @@ Resources:
   EFSFileSystem:
     Type: AWS::EFS::FileSystem
     Properties:
-      CreationToken: !Sub '${AWS::StackName}-efs'
       PerformanceMode: generalPurpose
       ThroughputMode: provisioned
       ProvisionedThroughputInMibps: 100
@@ -398,7 +397,7 @@ Resources:
       Volumes:
         - Name: efs-volume
           EFSVolumeConfiguration:
-            FileSystemId: !Ref EFSFileSystem
+            FilesystemId: !Ref EFSFileSystem
             RootDirectory: "/"
             TransitEncryption: ENABLED
       ContainerDefinitions:
