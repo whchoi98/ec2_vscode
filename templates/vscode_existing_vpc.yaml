@@ -251,7 +251,7 @@ Resources:
           dnf update -y --allowerasing
 
           # Install required packages with conflict resolution
-          dnf install -y --allowerasing curl jq tar gzip python3
+          dnf install -y --allowerasing curl git jq tar gzip unzip wget python3
 
           # Install pip3 and Python packages
           dnf install -y python3-pip
@@ -298,8 +298,8 @@ Resources:
           usermod -aG docker ec2-user
           echo "Docker installed: $(docker --version)" >> /var/log/user-data.log
 
-          # Install uv package manager
-          wget -qO- https://astral.sh/uv/install.sh | sh
+          # Install uv package manager (to /usr/local/bin so uv/uvx are on PATH for all users)
+          wget -qO- https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh || echo "[WARN] uv install failed"
 
           # Install code-server v4.126.0
           cd /tmp
