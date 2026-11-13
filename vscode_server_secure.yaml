@@ -644,7 +644,6 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
-      HealthCheckProtocol: HTTP
       Matcher:
         HttpCode: 200,302
       Targets:
